@@ -1,22 +1,29 @@
 # SnifferUI
-基于MFC和Winpcap库开发的抓包程序
+基于MFC和Winpcap库开发的抓包软件
+
 ## 功能：
 * 支持对Ethernet、ARP、IPv4、ICMP、UDP、TCP、DNS、HTTP、DHCP的解析。
 * 其中ICMP只支持解析类型为3、4、5、11、8、0的报文，DNS只支持解析类型A、NS、CNAME、PTR的报文，DHCP只能解析选项0、1、3、6、12、50、51、53、54、60、61、255。 
 
-## BUG：
-* 内存泄露
-
 ## ToDoList：
 * 代码重构
+* v2.0中DHCP,DNS,HTTP解析的实现
 
-## 程序运行截图：
 
-![decode_dhcp](https://github.com/Chentingz/SnifferUI/blob/master/Pics/decode_dhcp.png)
+## v2.0更新说明：
+* 解决内存泄露问题
+* 界面更换为WIN7风格
 
-![decode_dns](https://github.com/Chentingz/SnifferUI/blob/master/Pics/decode_dns.PNG)
+## 运行截图：
+### v2.0
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v2.0/img/v2.0_interface.PNG" width = 75% height = 75%  />  
 
-![decode_http](https://github.com/Chentingz/SnifferUI/blob/master/Pics/decode_http.png)
+### v1.0
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dhcp.png" width = 75% height = 75%  />  
+
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dns.PNG" width = 75% height = 75%  />  
+
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_http.png" width = 75% height = 75%  />
 
 ## 参考资料：
 * [一步一步开发sniffer（Winpcap+MFC）（一）工欲善其事，必先配环境——配置winpcap开发环境](https://blog.csdn.net/litingli/article/details/5950962)
