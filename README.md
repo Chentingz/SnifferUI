@@ -9,7 +9,6 @@
 * 代码重构
 * v2.0中DHCP,DNS,HTTP解析的实现
 
-
 ## v2.0更新说明：
 * 解决内存泄露问题
 * 界面更换为WIN7风格
@@ -32,3 +31,5 @@
 * [一步一步开发sniffer（Winpcap+MFC）（四）要想从此过，留下协议头——各层网络协议头的实现](https://blog.csdn.net/litingli/article/details/7315789)
 * [一步一步开发sniffer（Winpcap+MFC）（五）莫道无人能识君，其实我懂你的心——解析数据包](https://blog.csdn.net/litingli/article/details/7315914)
 * [一步一步开发sniffer（Winpcap+MFC）（六）千呼万唤始出来，不抱琵琶也露面——将解析数据写到GUI上](https://blog.csdn.net/litingli/article/details/7316173)
+* [RFC792 ICMP](https://www.rfc-editor.org/rfc/rfc792.txt)
+* [RFC1257 ICMP Router Discovery Messages](https://www.rfc-editor.org/rfc/rfc1256.txt)
