@@ -1,0 +1,41 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: SnifferUI - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating command line "rc.exe /l 0x804 /fo"Debug/SnifferUI.res" /d "_DEBUG" /d "_AFXDLL" "E:\Code\Sniffer\SnifferUI\SnifferUI.rc"" 
+Creating temporary file "R:\AppData\Local\Temp\RSPC721.tmp" with contents
+[
+/nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_AFXDLL" /D "_MBCS" /Fp"Debug/SnifferUI.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"E:\Code\Sniffer\SnifferUI\SnifferUI.cpp"
+"E:\Code\Sniffer\SnifferUI\SnifferUIDlg.cpp"
+]
+Creating command line "cl.exe @R:\AppData\Local\Temp\RSPC721.tmp" 
+Creating temporary file "R:\AppData\Local\Temp\RSPC722.tmp" with contents
+[
+/nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_AFXDLL" /D "_MBCS" /Fp"Debug/SnifferUI.pch" /Yc"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"E:\Code\Sniffer\SnifferUI\StdAfx.cpp"
+]
+Creating command line "cl.exe @R:\AppData\Local\Temp\RSPC722.tmp" 
+Creating command line "link.exe wpcap.lib Ws2_32.lib. /nologo /subsystem:windows /incremental:yes /pdb:"Debug/SnifferUI.pdb" /debug /machine:I386 /out:"Debug/SnifferUI.exe" /pdbtype:sept  .\Debug\SnifferUI.obj .\Debug\SnifferUIDlg.obj .\Debug\StdAfx.obj .\Debug\SnifferUI.res "
+<h3>Output Window</h3>
+Compiling resources...
+Compiling...
+StdAfx.cpp
+Compiling...
+SnifferUI.cpp
+SnifferUIDlg.cpp
+Generating Code...
+E:\Code\Sniffer\SnifferUI\SnifferUIDlg.cpp(318) : warning C4700: local variable 'dumpfile' used without having been initialized
+Linking...
+
+
+
+<h3>Results</h3>
+SnifferUI.exe - 0 error(s), 1 warning(s)
+</pre>
+</body>
+</html>

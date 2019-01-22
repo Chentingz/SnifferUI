@@ -1,0 +1,14 @@
+﻿  StdAfx.cpp
+D:\Software\Microsoft Visual Studio 14.0\VC\atlmfc\include\afx.h(38): warning C4996: 'MBCS_Support_Deprecated_In_MFC': MBCS support in MFC is deprecated and may be removed in a future version of MFC.
+  D:\Software\Microsoft Visual Studio 14.0\VC\atlmfc\include\afx.h(33): note: 参见“MBCS_Support_Deprecated_In_MFC”的声明
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+  SnifferUIDlg.cpp
+SnifferUIDlg.cpp(247): warning C4805: “==”: 在操作中将类型“BOOL”与类型“bool”混合不安全
+SnifferUIDlg.cpp(504): warning C4018: “<”: 有符号/无符号不匹配
+  SnifferUI.cpp
+SnifferUI.cpp(52): warning C4996: 'CWinApp::Enable3dControls': CWinApp::Enable3dControls is no longer needed. You should remove this call.
+  D:\Software\Microsoft Visual Studio 14.0\VC\atlmfc\include\afxwin.h(5224): note: 参见“CWinApp::Enable3dControls”的声明
+  Packet.cpp
+  正在生成代码...
+  SnifferUI.vcxproj -> E:\Code\Sniffer\SnifferUI\.\Debug\SnifferUI.exe
+  SnifferUI.vcxproj -> .\Debug\SnifferUI.pdb (Full PDB)
