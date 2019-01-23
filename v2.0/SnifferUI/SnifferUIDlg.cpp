@@ -488,7 +488,7 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList)
 }
 
 /**
-*	@brief 打印数据包数据到编辑框,每8个字节打印一个制表符，每16个字节打印一个回车换行 
+*	@brief 打印数据包数据到编辑框
 *	@param	pkt	数据包
 *	@return 0 打印成功	-1 打印失败
 */
@@ -499,25 +499,61 @@ int printEditCtrlPacketData(const Packet & pkt)
 		return -1;
 	}
 	CString strPacketData, strTmp;
-	u_char* pPacketData = pkt.pkt_data;
-
-	for (int i = 0, count = 0; i < pkt.header->caplen && pPacketData != NULL; ++i, ++count)
+	u_char* pHexPacketData = pkt.pkt_data;
+	u_char* pASCIIPacketData = pkt.pkt_data;
+	for (int i = 0,  count16=1, offset = 0; i < pkt.header->caplen && pHexPacketData != NULL; ++i, ++count16)
 	{
-		if (count == 8)
+		// 打印行首偏移量
+		if (i % 16 == 0)
+		{
+			strTmp.Format("%04X:", offset);
+			strPacketData += strTmp + " ";
+		}
+
+		// 打印16进制数据
+		strTmp.Format("%02X", *pHexPacketData);
+		strPacketData += strTmp + " ";
+		++pHexPacketData;
+
+		// 每8个字节数据打印一个制表符
+		if (count16 == 8)
 		{
 			strPacketData += "\t";
-			count = 0;
 		}
-		if (i!=0 && i % 16 == 0)
-		{
-			strPacketData += "\r\n";
-		}
-		strTmp.Format("%02X", *pPacketData);
-		strPacketData += strTmp + " ";
-		++pPacketData;
-	}
 
+		// 每16个字节数据打印ASCII字符数据，只打印字母数字
+		if (count16 == 16)
+		{
+			strPacketData += " ";
+			for (int j=0; j < 16; ++j, ++pASCIIPacketData)
+			{
+				strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
+				strPacketData += strTmp;
+			}
+			strPacketData += "\r\n";
+			offset += 16;
+			count16 = 0;
+		}
+	}
+	// 打印剩余ASCII字节
+	for (int j = 0, count16= (pkt.header->caplen % 16); j < 16 - (pkt.header->caplen % 16); ++j, ++count16)
+	{
+		strPacketData += "   ";
+		if (count16 == 8)
+		{
+			strPacketData += "\t";
+		}
+	}
+	strPacketData += " ";
+	for (int j = 0; j < (pkt.header->caplen % 16); ++j, ++pASCIIPacketData)
+	{
+		strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
+		strPacketData += strTmp;
+	}
+	strPacketData += "\r\n";
+	
 	g_pEditCtrlPacketData->SetWindowTextA(strPacketData);
+
 	return 0;
 }
 
@@ -618,11 +654,9 @@ int printIP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	strText.Format("MF：%d", (ntohs(pkt.iph->flags_offset) >> 14) & 0x0001);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, IPFlagNode, 0);
 	
-
 	strText.Format("DF：%d", (ntohs(pkt.iph->flags_offset) >> 13) & 0x0001);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, IPFlagNode, 0);
 			
-
 	strText.Format("片偏移：%d", ntohs(pkt.iph->flags_offset) & 0x1fff);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
 	
@@ -694,18 +728,15 @@ int printARP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	strText += strTmp + "）";		
 	ARPNode= g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
 	
-
 	strText.Format("硬件类型：%hu", ntohs(pkt.arph->hwtype));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, ARPNode, 0);
 	
 	strText.Format("协议类型：0x%04hx (%hu)", ntohs(pkt.arph->ptype), ntohs(pkt.arph->ptype));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, ARPNode, 0);
 	
-
 	strText.Format("硬件地址长度：%u", pkt.arph->hwlen);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, ARPNode, 0);
 	
-
 	strText.Format("协议地址长度：%u", pkt.arph->plen);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, ARPNode, 0);
 	
@@ -851,7 +882,6 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	
 			strText.Format("校验和：0x%04hX", ntohs(pkt.icmph->chksum));
 			g_pTreeCtrlPacketInfo->InsertItem(strText, ICMPNode, 0);
-
 			break;
 	
 		case ICMP_TYPE_SOURCE_QUENCH : 
@@ -860,7 +890,6 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 				
 			strText.Format("校验和：0x%04hX", ntohs(pkt.icmph->chksum));
 			g_pTreeCtrlPacketInfo->InsertItem(strText, ICMPNode, 0);
-
 			break;
 	
 		case ICMP_TYPE_REDIRECT: 
@@ -891,7 +920,6 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	
 				strText = "目标路由器的IP地址：" + IPAddr2CString(addr);
 				g_pTreeCtrlPacketInfo->InsertItem(strText, ICMPNode, 0);
-
 				break;
 
 		case ICMP_TYPE_ECHO:
@@ -906,7 +934,6 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 
 			strText.Format("序号：%hu", seq);
 			g_pTreeCtrlPacketInfo->InsertItem(strText, ICMPNode, 0);
-
 			break;
 
 		case ICMP_TYPE_TIME_EXCEEDED: 
@@ -1006,6 +1033,21 @@ int printTCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 							
 	strText.Format("紧急指针：%hu", ntohs(pkt.tcph->urg_ptr));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, TCPNode, 0);
+
+	if (pkt.dnsh != NULL)
+	{
+		printDNS2TreeCtrl(pkt, parentNode);
+	}
+	else if (pkt.dhcph != NULL)
+	{
+		printDHCP2TreeCtrl(pkt, parentNode);
+	}
+	else if (pkt.httpmsg != NULL)
+	{
+		printHTTP2TreeCtrl(pkt, parentNode);
+	}
+
+
 	return 0;
 }
 
@@ -1031,22 +1073,73 @@ int printUDP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	strText += strTmp + "）";
 	UDPNode = g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
 							
-
-	 strText.Format("源端口：%hu", ntohs(pkt.udph->srcport));
+	strText.Format("源端口：%hu", ntohs(pkt.udph->srcport));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 							
-
 	strTmp.Format("目的端口：%hu", ntohs(pkt.udph->dstport));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 							
-
 	strText.Format("长度：%hu", ntohs(pkt.udph->len));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 							
-
 	strText.Format("校验和：0x%04hX", ntohs(pkt.udph->checksum));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 
+	return 0;
+}
+
+int printDNS2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
+{
+	return 0;
+}
+
+int printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
+{
+	return 0;
+}
+
+/**
+*	@brief	打印HTTP报文到树形控件
+*	@param	pkt 数据包
+*	@param	parentNode 父节点
+*	@return	0 插入成功	-1 插入失败
+*/
+int printHTTP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
+{
+	if (pkt.isEmpty() || pkt.httpmsg == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+
+	u_char *p = pkt.httpmsg;
+	int HTTPMsgLen = ntohs(pkt.iph->totallen) - (pkt.iph->ver_headerlen & 0x0F) * 4 - (ntohs(pkt.tcph->headerlen_rsv_flags) >> 12)*4;
+		
+	CString strText;
+	if (ntohs(pkt.tcph->dstport) == PORT_HTTP)
+	{
+		strText = "HTTP (请求)";
+	}
+	else if (ntohs(pkt.tcph->srcport) == PORT_HTTP)
+	{
+		strText = "HTTP (响应)";
+	}
+	HTREEITEM HTTPNode = g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+	
+	for(int count = 0; count < HTTPMsgLen; )
+	{
+		strText = "";
+		while(*p != '\r')
+		{
+			strText += *p;
+			++p;
+			++count;
+		}
+		strText += "\\r\\n";
+		g_pTreeCtrlPacketInfo->InsertItem(strText, HTTPNode, 0);
+	
+		p += 2;
+		count += 2;
+	}	
 	return 0;
 }
 
@@ -1108,29 +1201,6 @@ void CSnifferUIDlg::OnClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 	printTreeCtrlPacketInfo(pkt, selRow);
 	printEditCtrlPacketData(pkt);
 }
-
-
-
-
-
-
-
-
-
-/**
-*	@brief	解析数据包线程入口函数
-*	@param	Packet类对象的void*指针
-*	@return	0 表示成功	-1 表示失败
-
-UINT decode_thread(LPVOID pParam)
-{
-	if (pParam = NULL)	return -1;
-	Packet pkt = *(Packet*)pParam;
-	pkt.decodeEthernet();
-	packetLinkList.AddTail(pkt);
-	return 0;
-}
-*/
 
 ///* 存储以太网帧 */
 //void saveFrame(const u_char *pkt_data, int offset)
