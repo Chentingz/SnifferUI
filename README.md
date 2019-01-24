@@ -1,5 +1,5 @@
 # SnifferUI
-基于MFC和Winpcap库开发的抓包软件
+基于MFC和Winpcap库开发的网络抓包软件
 
 ## 功能：
 * 支持对Ethernet、ARP、IPv4、ICMP、UDP、TCP、DNS、HTTP、DHCP的解析。
@@ -7,6 +7,8 @@
 
 ## ToDoList：
 * v2.0中DHCP,DNS,HTTP解析的实现
+* 根据协议名过滤数据包
+* 数据包保存为.pcap格式文件
 
 ## v2.0更新说明：
 * 代码重构
@@ -15,12 +17,12 @@
 
 ## 运行截图：
 ### v2.0
-<img src="https://github.com/Chentingz/SnifferUI/blob/master/v2.0/img/v2.0_interface.PNG" width = 75% height = 75%  />  
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v2.0/img/v2.0_interface_20190124.png" width = 75% height = 75%  />  
 
 ### v1.0
-<img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dhcp.png" width = 75% height = 75%  />  
-
 <img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dns.PNG" width = 75% height = 75%  />  
+
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dhcp.png" width = 75% height = 75%  />  
 
 <img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_http.png" width = 75% height = 75%  />
 
@@ -33,3 +35,5 @@
 * [一步一步开发sniffer（Winpcap+MFC）（六）千呼万唤始出来，不抱琵琶也露面——将解析数据写到GUI上](https://blog.csdn.net/litingli/article/details/7316173)
 * [RFC792 ICMP](https://www.rfc-editor.org/rfc/rfc792.txt)
 * [RFC1257 ICMP Router Discovery Messages](https://www.rfc-editor.org/rfc/rfc1256.txt)
+* [RFC1035  DOMAIN NAMES - IMPLEMENTATION AND SPECIFICATION](https://www.rfc-editor.org/rfc/rfc1035.txt)
+* [RFC2132 DHCP Options and BOOTP Vendor Extensions](https://www.rfc-editor.org/rfc/rfc2132.txt)
