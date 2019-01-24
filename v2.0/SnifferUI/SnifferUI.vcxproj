@@ -177,6 +177,10 @@
     <ResourceCompile Include="SnifferUI.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\btnPause.ico" />
+    <Image Include="res\btnStart.bmp" />
+    <Image Include="res\btnStart.ico" />
+    <Image Include="res\btnStop.ico" />
     <Image Include="res\SnifferUI.ico" />
   </ItemGroup>
   <ItemGroup>

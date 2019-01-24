@@ -108,6 +108,7 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 	ON_NOTIFY(NM_CLICK, IDC_LIST1, OnClickList1)
 	//}}AFX_MSG_MAP
 //	ON_BN_CLICKED(IDC_PAUSE, &CSnifferUIDlg::OnBnClickedPause)
+ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST1, &CSnifferUIDlg::OnCustomdrawList1)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -155,6 +156,12 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	g_pListCtrlPacketList = &listctrlPacketList_;
 	g_pTreeCtrlPacketInfo = &treectrlPacketInfo_;
 	g_pEditCtrlPacketData = &editCtrlPacketData_;
+
+	///* 按钮初始化 */
+	//g_pBtnStart->SetIcon(LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDI_ICON1)));
+	//g_pBtnPause->SetIcon(LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDI_ICON2)));
+	//g_pBtnStop->SetIcon(LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDI_ICON3)));
+
 
 	/* 列表控件初始化 */
 	initialListCtrlPacketList();
@@ -348,7 +355,6 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 	/* 存储数据包到链表 */
 	Packet pkt(pkt_data, header);
 
-	// BUG，链表里面存的pkt不对 
 	g_packetLinkList.AddTail(pkt);
 	Packet &pkt1 = g_packetLinkList.GetTail();
 	printListCtrlPacketList(pkt1);
@@ -400,6 +406,7 @@ void initialListCtrlPacketList()
 
 }
 
+
 /**
 *	@brief	打印数据包概要信息到列表控件
 *	@param	数据包
@@ -425,6 +432,10 @@ int printListCtrlPacketList(const Packet &pkt)
 	if (!pkt.protocol.IsEmpty())
 	{
 		g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, pkt.protocol);
+		//COLORREF ref = RGB(120, 250, 110);
+		///*if(pkt.protocol == "TCP")
+		//	g_pListCtrlPacketList->SetTextBkColor(ref);*/
+		//
 	}
 	else
 	{
@@ -567,10 +578,14 @@ int printTreeCtrlPacketInfo(const Packet &pkt, int pktIndex)
 	g_pTreeCtrlPacketInfo->DeleteAllItems();
 
 	/* 建立编号结点 */
-	CString strTmp;
-	strTmp.Format("第%d个数据包", pktIndex + 1);
+	CString strText;
 
-	HTREEITEM rootNode = g_pTreeCtrlPacketInfo->InsertItem(strTmp,TVI_ROOT);
+	CTime pktArrivalTime((time_t)(pkt.header->ts.tv_sec));
+	CString strPktArrivalTime = pktArrivalTime.Format("%Y/%m/%d %H:%M:%S");
+
+	strText.Format("第%d个数据包（%s, 共 %hu 字节, 捕获 %hu 字节）", pktIndex + 1, strPktArrivalTime, pkt.header->len, pkt.header->caplen);
+
+	HTREEITEM rootNode = g_pTreeCtrlPacketInfo->InsertItem(strText, TVI_ROOT);
 	if (pkt.ethh != NULL)
 	{
 		printEthernet2TreeCtrl(pkt, rootNode);
@@ -719,13 +734,11 @@ int printARP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	HTREEITEM ARPNode;
 	CString strText, strTmp;
 
-	strText = "ARP （";
 	switch(ntohs(pkt.arph->opcode))
 	{
-	case 1:	strTmp.Format("请求"); break;
-	case 2:	strTmp.Format("响应");	break;
-	}
-	strText += strTmp + "）";		
+	case 1:	strText.Format("ARP （请求)"); break;
+	case 2:	strText.Format("ARP （响应)");	break;
+	}	
 	ARPNode= g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
 	
 	strText.Format("硬件类型：%hu", ntohs(pkt.arph->hwtype));
@@ -813,10 +826,10 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 			strTmp = "时间戳请求报告"; 
 			break;
 		case ICMP_TYPE_TIMESTAMP_REPLY: 
-			strTmp = "时间戳应答报告"; 
+			strTmp = "时间戳响应报告"; 
 			break;
 		default: 
-			strTmp.Format("未知"); 
+			strText.Format("未知"); 
 			break;
 	}
 	strText += strTmp + "）";
@@ -851,19 +864,19 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 			switch(pkt.icmph->code)
 			{
 				case ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_NET_UNREACHABLE: 
-					strTmp.Format("网络不可达 （%d）", pkt.icmph->code);
+					strText.Format("网络不可达 （%d）", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_HOST_UNREACHABLE: 
-					strTmp.Format("主机不可达 （%d）", pkt.icmph->code);
+					strText.Format("主机不可达 （%d）", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_PROTOCOL_UNREACHABLE: 
-					strTmp.Format("协议不可达 （%d）", pkt.icmph->code);
+					strText.Format("协议不可达 （%d）", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_PORT_UNREACHABLE: 
-					strTmp.Format("端口不可达 （%d）", pkt.icmph->code);
+					strText.Format("端口不可达 （%d）", pkt.icmph->code);
 					break;
 
 				case 6: 
@@ -875,7 +888,7 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 					break;
 
 				default: 
-					strTmp.Format("未知 （%d）", pkt.icmph->code); break;
+					strText.Format("未知 （%d）", pkt.icmph->code); break;
 			}
 			strText += strTmp;
 			g_pTreeCtrlPacketInfo->InsertItem(strText, ICMPNode, 0);
@@ -897,19 +910,19 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 				switch(pkt.icmph->code)
 				{
 				case ICMP_TYPE_REDIRECT_CODE_REDIRECT_DATAGRAMS_FOR_THE_NETWORK:	
-					strTmp.Format("对特定网络重定向（%d)", pkt.icmph->code);
+					strText.Format("对特定网络重定向（%d)", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_REDIRECT_CODE_REDIRECT_DATAGRAMS_FOR_THE_HOST: 
-					strTmp.Format("对特定主机重定向 （%d)", pkt.icmph->code);
+					strText.Format("对特定主机重定向 （%d)", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_REDIRECT_CODE_REDIRECT_DATAGRAMS_FOR_THE_TOS_AND_NETWORK: 
-					strTmp.Format("基于指定的服务类型对特定网络重定向 （%d）", pkt.icmph->code);
+					strText.Format("基于指定的服务类型对特定网络重定向 （%d）", pkt.icmph->code);
 					break;
 
 				case ICMP_TYPE_REDIRECT_CODE_REDIRECT_DATAGRAMS_FOR_THE_TOS_AND_HOST: 
-					strTmp.Format("基于指定的服务类型对特定主机重定向 （%d）", pkt.icmph->code); 
+					strText.Format("基于指定的服务类型对特定主机重定向 （%d）", pkt.icmph->code); 
 					break;
 				}
 				strText += strTmp;
@@ -941,10 +954,10 @@ int printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 			switch(pkt.icmph->code)
 			{
 				case ICMP_TYPE_TIME_EXCEEDED_CODE_TTL_EXCEEDED_IN_TRANSIT: 
-					strTmp.Format("TTL超时 （%d）", pkt.icmph->code);	
+					strText.Format("TTL超时 （%d）", pkt.icmph->code);	
 					break;
 				case ICMP_TYPE_TIME_EXCEEDED_CODE_FRAGMENT_REASSEMBLY_TIME_EXCEEDE: 
-					strTmp.Format("分片重组超时 （%d）", pkt.icmph->code);
+					strText.Format("分片重组超时 （%d）", pkt.icmph->code);
 					break;
 			}
 			strText += strTmp;
@@ -982,11 +995,7 @@ int printTCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	HTREEITEM TCPNode;
 	CString strText, strTmp;
 							
-	strText = "TCP （";
-	strTmp.Format("%hu", ntohs(pkt.tcph->srcport));
-	strText += strTmp + " -> ";
-	strTmp.Format("%hu", ntohs(pkt.tcph->dstport));
-	strText += strTmp + "）";
+	strText.Format("TCP （%hu -> %hu）", ntohs(pkt.tcph->srcport), ntohs(pkt.tcph->dstport));
 	TCPNode = g_pTreeCtrlPacketInfo->InsertItem(strText,parentNode, 0);
 							
 	strText.Format("源端口：%hu", ntohs(pkt.tcph->srcport));
@@ -1004,7 +1013,7 @@ int printTCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	strText.Format("首部长度：%d 字节(%d)", (ntohs(pkt.tcph->headerlen_rsv_flags) >> 12 ) * 4, ntohs(pkt.tcph->headerlen_rsv_flags) >> 12);
 	g_pTreeCtrlPacketInfo->InsertItem(strText, TCPNode, 0);
 							
-	strText.Format("标志：0x%03X", ntohs(pkt.tcph->headerlen_rsv_flags) & 0x0fff);
+	strText.Format("标志：0x%03X", ntohs(pkt.tcph->headerlen_rsv_flags) & 0x0FFF);
 	HTREEITEM TCPFlagNode = g_pTreeCtrlPacketInfo->InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("URG：%d", (ntohs(pkt.tcph->headerlen_rsv_flags) >> 5) & 0x0001);
@@ -1066,17 +1075,13 @@ int printUDP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	HTREEITEM UDPNode;		
 	CString strText, strTmp;
 							
-	strText = "UDP （";
-	strTmp.Format("%hu", ntohs(pkt.udph->srcport));
-	strText += strTmp + " -> ";
-	strTmp.Format("%hu", ntohs(pkt.udph->dstport));
-	strText += strTmp + "）";
+	strText.Format("UDP （%hu -> %hu）", ntohs(pkt.udph->srcport), ntohs(pkt.udph->dstport));
 	UDPNode = g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
 							
 	strText.Format("源端口：%hu", ntohs(pkt.udph->srcport));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 							
-	strTmp.Format("目的端口：%hu", ntohs(pkt.udph->dstport));
+	strText.Format("目的端口：%hu", ntohs(pkt.udph->dstport));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 							
 	strText.Format("长度：%hu", ntohs(pkt.udph->len));
@@ -1085,16 +1090,1103 @@ int printUDP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	strText.Format("校验和：0x%04hX", ntohs(pkt.udph->checksum));
 	g_pTreeCtrlPacketInfo->InsertItem(strText, UDPNode, 0);
 
+	if (pkt.dnsh != NULL)
+	{
+		printDNS2TreeCtrl(pkt, parentNode);
+	}
+	else if (pkt.dhcph != NULL)
+	{
+		printDHCP2TreeCtrl(pkt, parentNode);
+	}
 	return 0;
 }
 
+/** 
+*	@brief	打印DNS结点标题
+*	@param	pkt	数据包
+*	@param	parentNode 父节点
+*	@return DNS结点
+*/
+HTREEITEM printDNSBanner(const Packet &pkt, HTREEITEM &parentNode)
+{
+	if (pkt.isEmpty() || parentNode == NULL)
+	{
+		return NULL;
+	}
+	CString strText, strTmp;
+
+	switch (pkt.dnsh->flags >> 15)
+	{
+	case DNS_FLAGS_QR_REQUEST:	strText = "DNS （请求）";		break;
+	case DNS_FLAGS_QR_REPLY:	strText = "DNS （响应）";		break;
+	}
+	return g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+}
+
+
+/**
+*	@brief	打印DNS首部
+*	@param	dnsh	DNS首部
+*	@param	parentNode	父节点
+*	@return 0 打印成功	-1 打印失败
+*/
+int printDNSHeader(const DNS_Header *dnsh, HTREEITEM & parentNode)
+{
+	if (dnsh == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+	CString strText, strTmp;
+	strText.Format("标识：0x%04hX (%hu)", ntohs(dnsh->identifier), ntohs(dnsh->identifier));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+
+	strText.Format("标志：0x%04hX", ntohs(dnsh->flags));
+	strText += strTmp;
+
+	HTREEITEM DNSFlagNode = g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+	/* 标志子字段 */
+	switch (ntohs(dnsh->flags) >> 15)
+	{
+	case DNS_FLAGS_QR_REQUEST:	strText = "QR：; 查询报文 （0）";	break;
+	case DNS_FLAGS_QR_REPLY:	strText = "QR：; 响应报文 （1）";	break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	switch ((ntohs(dnsh->flags) >> 11) & 0x000f)
+	{
+	case DNS_FLAGS_OPCODE_STANDARD_QUERY:			strText = "Opcode：标准查询 （0）";	break;
+	case DNS_FLAGS_OPCODE_INVERSE_QUERY:			strText = "Opcode：反向查询 （1）";	break;
+	case DNS_FLAGS_OPCODE_SERVER_STATUS_REQUEST:	strText = "Opcode：服务器状态请求 （2）"; break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	switch ((ntohs(dnsh->flags) >> 10) & 0x0001)
+	{
+	case 0:	strText = "AA：非授权回答 （0）"; break;
+	case 1: strText = "AA：授权回答 （1）"; break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+
+	switch ((ntohs(dnsh->flags) >> 9) & 0x0001)
+	{
+	case 0: strText = "TC：报文未截断 （0）"; break;
+	case 1: strText = "TC：报文截断 （1）";	break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+
+	switch ((ntohs(dnsh->flags) >> 8) & 0x0001)
+	{
+	case 0: strText = "RD：0"; break;
+	case 1: strText = "RD：希望进行递归查询 （1）";	break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	switch ((ntohs(dnsh->flags) >> 7) & 0x0001)
+	{
+	case 0: strText = "RA：服务器不支持递归查询 （0）"; break;
+	case 1: strText = "RA：服务器支持递归查询 （1）";	break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	strText.Format("Reserved：%d", (ntohs(dnsh->flags) >> 4) & 0x0007);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	switch (ntohs(dnsh->flags) & 0x000f)
+	{
+	case 0: strText = "rCode：无差错 （0）";			break;
+	case 1: strText = "rCode：格式差错 （1）";			break;
+	case 2: strText = "rCode：DNS服务器问题 （2）";		break;
+	case 3: strText = "rCode：域名不存在或出错 （3）";	break;
+	case 4: strText = "rCode：查询类型不支持 （4）";	break;
+	case 5: strText = "rCode：在管理上禁止 （5）";		break;
+	default: strText.Format("rCode：保留（%d）", ntohs(dnsh->flags) & 0x000f);		break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DNSFlagNode, 0);
+
+	strText.Format("查询记录数：%hu", ntohs(dnsh->questions));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+
+	strText.Format("回答记录数：%hu", ntohs(dnsh->answers));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+
+	strText.Format("授权回答记录数：%hu", ntohs(dnsh->authority));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+
+	strText.Format("附加信息记录数：%hu", ntohs(dnsh->additional));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, parentNode, 0);
+
+	return 0;
+}
+
+/**
+*	@brief	打印DNS查询部分
+*	@param	dnsq		查询部分
+*	@param	questions	查询记录数
+*	@param	parentNode	父节点
+*	@return	0 打印成功	-1 打印失败	正整数 DNS查询部分总长度
+*/
+int printDNSQuery(char *DNSQuery, const u_short &questions, HTREEITEM &parentNode)
+{
+	if (DNSQuery == NULL && parentNode == NULL)
+	{
+		return -1;
+	}
+	CString strText, strTmp;
+	HTREEITEM DNSQueryNode = g_pTreeCtrlPacketInfo->InsertItem("查询部分：", parentNode, 0);
+
+	/* 查询部分 */
+	int queryNum = 0, byteCounter = 0;
+	char *p = DNSQuery;
+	if (questions < 10)
+	{
+		while (queryNum < questions)
+		{
+			char *name1 = (char*)malloc(strlen(p) + 1);
+			translateName(name1, p);
+
+			/* 跳过域名字段 */
+			while (*p)
+			{
+				++p;
+				++byteCounter;
+			}
+			++p;
+			++byteCounter;
+
+			strText.Format("%s:", name1);
+
+			DNS_Query *dnsq = (DNS_Query*)p;
+			u_short	type, classes;
+
+			type = ntohs(dnsq->type);
+			classes = ntohs(dnsq->classes);
+
+			switch (type)
+			{
+			case 1:	strTmp = "type A"; break;
+			case 2:	strTmp = "type NS"; break;
+			case 5: strTmp = "type CNAME"; break;
+			case 6: strTmp = "type SOA"; break;
+			case 12: strTmp = "type PTR"; break;
+			case 15: strTmp = "type MX"; break;
+			case 28: strTmp = "type AAAA"; break;
+			case 255: strTmp = "type ANY"; break;
+			default: strTmp.Format("type UNKNOWN(%hu)", type); break;
+			}
+			strText += strTmp + ", ";
+
+			switch (classes)
+			{
+			case 1: strTmp = "class INTERNET"; break;
+			case 2: strTmp = "class CSNET";	break;
+			case 3: strTmp = "class COAS";	break;
+			default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
+			}
+			strText += strTmp;
+
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DNSQueryNode, 0);
+
+			/* 跳过查询类型和查询类字段 */
+			p += sizeof(DNS_Query);
+			byteCounter += sizeof(DNS_Query);
+			queryNum++;
+			free(name1);
+		}// while
+	}// if
+	return p - DNSQuery + 1;
+}
+
+/**
+*	@brief	打印DNS回答部分
+*	@param	dnsa		回答部分
+*	@param	answers		回答记录数
+*	@param	parentNode	父节点
+*	@return	0 打印成功	-1 打印失败	正整数 DNS回答部分总长度
+*/
+int printDNSAnswer(char *DNSAnswer, const u_short &answers, const DNS_Header *dnsh, HTREEITEM &parentNode)
+{
+	if (DNSAnswer == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+	CString strText, strTmp;
+	HTREEITEM DNSAnswerNode = g_pTreeCtrlPacketInfo->InsertItem("回答部分：", parentNode, 0);
+
+	int answerNum = 0, byteCounter = 0;
+	char *p = DNSAnswer;
+	/* 回答部分 */
+	while (answerNum < answers)
+	{
+		/* 指向指针 */
+		if (*p == 0xc0)
+		{
+
+			/* 指向偏移量
+			++p;
+
+			char *name = (char*)(pkt_data + offset + *(char*)p);			// 域名
+			char *name1 = (char*)malloc(strlen(name)+1);
+
+
+			translateName(name1, name);
+
+			strText.Format("%s", name1);
+			strText += "：";
+
+			free(name1);
+			*/
+
+			char name[70];
+			char name1[70];
+
+			translateData(dnsh, name, p, 2);
+			translateName(name1, name);
+
+			strText.Format("%s：", name1);
+
+			/* 指向偏移量 */
+			++p;
+			++byteCounter;
+
+
+			/* 指向类型*/
+			++p;
+			++byteCounter;
+			DNS_Answer *dnsa = (DNS_Answer*)p;
+
+			u_short type = ntohs(dnsa->type);
+			u_short classes = ntohs(dnsa->classes);
+			u_long  ttl = ntohl(dnsa->ttl);
+
+			switch (type)
+			{
+			case 1:	strTmp = "type A"; break;
+			case 2:	strTmp = "type NS"; break;
+			case 5: strTmp = "type CNAME"; break;
+			case 6: strTmp = "type SOA"; break;
+			case 12: strTmp = "type PTR"; break;
+			case 15: strTmp = "type MX"; break;
+			case 28: strTmp = "type AAAA"; break;
+			case 255: strTmp = "type ANY"; break;
+			default: strTmp.Format("type UNKNOWN(%hu)", type); break;
+			}
+			strText += strTmp + ", ";
+
+			switch (classes)
+			{
+			case 1: strTmp = "class INTERNET"; break;
+			case 2: strTmp = "class CSNET";	break;
+			case 3: strTmp = "class COAS";	break;
+			default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
+			}
+			strText += strTmp + ", ";
+
+			strTmp.Format("TTL %lu", ttl);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据长度 */
+			p += sizeof(DNS_Answer);
+			byteCounter += sizeof(DNS_Answer);
+			u_short data_len = ntohs(*(u_short*)p);
+
+			strTmp.Format("资源数据长度 %hu", data_len);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据 */
+			p += sizeof(u_short);
+			byteCounter += sizeof(u_short);
+
+			/* 查询类型为NS、CNAME、PTR的资源数据 */
+			if (type == 2 || type == 5 || type == 12)
+			{
+
+				/* 资源数据为指针0xc0 + 偏移量*/
+				if (*(char*)p == 0xC0)
+				{
+					/* 根据偏移量获取数据
+					char *data = (char*)(pkt_data + offset + *(char*)(p+1));			// 域名
+					char *data1 = (char*)malloc(strlen(data)+1);
+
+					translateName(data1, data);
+
+					strText.Format("%s", data1);
+					strText += strTmp;
+
+					free(data1);
+					*/
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, 2);
+					translateName(data1, data);
+
+					strText.Format("%s", data1);
+					strText += strTmp;
+
+				}
+				/* 资源数据存在指针0xc0 + 偏移量 */
+				else if (isNamePtr(p))
+				{
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, data_len);		// 去掉指针0xc0+偏移量
+					translateName(data1, data);								// 去掉'.'
+
+					strTmp.Format("%s", data1);
+					strText += strTmp;
+				}
+				/* 资源数据中不存在指针0xc0 + 偏移量 */
+				else
+				{
+					char *data = (char*)malloc(data_len);
+
+					translateName(data, p);
+
+					strTmp.Format("%s", data);
+					strText += strTmp;
+					free(data);
+
+				}
+			}
+			/* 查询类型为A的资源数据 */
+			else if (type == 1)
+			{
+				IP_Address data = *(IP_Address*)p;
+				strText += IPAddr2CString(data);
+			}
+
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DNSAnswerNode, 0);
+
+			/* 跳过数据部分 */
+			p += data_len;
+			byteCounter += data_len;
+
+		}// if
+		answerNum++;
+	}// while
+	return byteCounter;
+}
+
+
+int printDNSAuthority(char *DNSAuthority, const u_short &authority, const DNS_Header *dnsh, HTREEITEM parentNode)
+{
+	CString strText, strTmp;
+	HTREEITEM DNSAuthorityNode = g_pTreeCtrlPacketInfo->InsertItem("授权回答部分：", parentNode, 0);
+
+	int authorityNum = 0, byteCounter = 0;;
+	char *p = DNSAuthority;
+	/* 授权回答部分 */
+	while (authorityNum < authority)
+	{
+		/* 指向指针 */
+		if (*p == 0xC0)
+		{
+
+			/* 指向偏移量
+			++p;
+
+			char *name = (char*)(pkt_data + offset + *(char*)p);			// 域名
+			char *name1 = (char*)malloc(strlen(name)+1);
+			translateName(name1, name);
+
+			strText.Format("%s", name1);
+			strText += "：";
+			free(name1);
+			*/
+			char name[70];
+			char name1[70];
+
+			translateData(dnsh, name, p, 2);
+			translateName(name1, name);
+
+			strText.Format("%s", name1);
+			strText += "：";
+
+			/* 指向偏移量 */
+			++p;
+			++byteCounter;
+
+			/* 指向类型*/
+			++p;
+			++byteCounter;
+			DNS_Answer *dnsa = (DNS_Answer*)p;
+
+			u_short type = ntohs(dnsa->type);
+			u_short classes = ntohs(dnsa->classes);
+			u_long  ttl = ntohl(dnsa->ttl);
+
+			switch (type)
+			{
+			case 1:	strTmp = "type A"; break;
+			case 2:	strTmp = "type NS"; break;
+			case 5: strTmp = "type CNAME"; break;
+			case 6: strTmp = "type SOA"; break;
+			case 12: strTmp = "type PTR"; break;
+			case 15: strTmp = "type MX"; break;
+			case 28: strTmp = "type AAAA"; break;
+			case 255: strTmp = "type ANY"; break;
+			default: strTmp.Format("type UNKNOWN(%hu)", type); break;
+			}
+			strText += strTmp + ", ";
+
+			switch (classes)
+			{
+			case 1: strTmp = "class INTERNET"; break;
+			case 2: strTmp = "class CSNET";	break;
+			case 3: strTmp = "class COAS";	break;
+			default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
+			}
+			strText += strTmp + ", ";
+
+			strTmp.Format("ttl %lu", ttl);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据长度 */
+			p += sizeof(DNS_Answer);
+			byteCounter += sizeof(DNS_Answer);
+
+			u_short data_len = ntohs(*(u_short*)p);
+
+			strTmp.Format("len %hu", data_len);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据 */
+			p += sizeof(u_short);
+			byteCounter += sizeof(u_short);
+
+			/* 查询类型为NS、CNAME、PTR的资源数据 */
+			if (type == 2 || type == 5 || type == 12)
+			{
+
+				/* 资源数据为指针0xc0 + 偏移量*/
+				if (*(char*)p == 0xc0)
+				{
+					/* 根据偏移量获取数据
+					char *data = (char*)(pkt_data + offset + *(char*)(p+1));			// 域名
+					char *data1 = (char*)malloc(strlen(data)+1);
+					translateName(data1, data);
+					strTmp.Format("%s", data1);
+					strText += strTmp;
+					free(data1);
+					*/
+
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, 2);
+					translateName(data1, data);
+
+					strTmp.Format("%s", data1);
+					strText += strTmp;
+				}
+				/* 资源数据存在指针0xc0 + 偏移量 */
+				else if (isNamePtr(p))
+				{
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, data_len);		// 去掉指针0xc0+偏移量
+					translateName(data1, data);								// 去掉'.'
+
+					strTmp.Format("%s", data1);
+					strText += strTmp;
+				}
+				/* 资源数据中不存在指针0xc0 + 偏移量 */
+				else
+				{
+					char *data = (char*)malloc(data_len);
+
+					translateName(data, p);
+
+					strTmp.Format("%s", data);
+					strText += strTmp;
+					free(data);
+
+				}
+			}
+			/* 查询类型为A的资源数据 */
+			else if (type == 1)
+			{
+				IP_Address data = *(IP_Address*)p;
+
+				strText += IPAddr2CString(data);
+			}
+
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DNSAuthorityNode, 0);
+
+			/* 跳过数据部分 */
+			p += data_len;
+			byteCounter += data_len;
+
+
+		}// if
+		authorityNum++;
+	}
+	return byteCounter;
+}
+
+/**
+*	@brief	打印DNS附加信息部分
+*	@param	dnsa		附加信息部分
+*	@param	answers		附加信息记录数
+*	@param	parentNode	父节点
+*	@return	0 打印成功	-1 打印失败 正整数 DNS附加信息部分总长度
+*/
+int printDNSAdditional(char *DNSAdditional, const u_short &additional, const DNS_Header *dnsh, HTREEITEM &parentNode)
+{
+	if (DNSAdditional == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+	CString strText, strTmp;
+	HTREEITEM DNSAdditionalNode = g_pTreeCtrlPacketInfo->InsertItem("附加信息部分：", parentNode, 0);
+
+	int additionalNum = 0, byteCounter = 0;
+	char *p = DNSAdditional;
+	/* 附加信息部分 */
+	while (additionalNum < additional)
+	{
+
+		/* 指向指针 */
+		if (*(char*)p == 0xC0)
+		{
+
+			/* 指向偏移量
+			++p;
+
+			char *name = (char*)(pkt_data + offset + *(char*)p);			// 域名
+			char *name1 = (char*)malloc(strlen(name)+1);
+
+			translateName(name1, name);
+
+			strText.Format("%s", name1);
+			strText += "：";
+
+			free(name1);
+			*/
+			char name[70];
+			char name1[70];
+
+			translateData(dnsh, name, p, 2);
+			translateName(name1, name);
+
+			strText.Format("%s", name1);
+			strText += "：";
+
+			/* 指向偏移量 */
+			++p;
+			++byteCounter;
+
+			/* 指向类型*/
+			++p;
+			++byteCounter;
+			DNS_Answer *dnsa = (DNS_Answer*)p;
+
+			u_short type = ntohs(dnsa->type);
+			u_short classes = ntohs(dnsa->classes);
+			u_long  ttl = ntohl(dnsa->ttl);
+
+			switch (type)
+			{
+			case 1:	strTmp = "type A"; break;
+			case 2:	strTmp = "type NS"; break;
+			case 5: strTmp = "type CNAME"; break;
+			case 6: strTmp = "type SOA"; break;
+			case 12: strTmp = "type PTR"; break;
+			case 15: strTmp = "type MX"; break;
+			case 28: strTmp = "type AAAA"; break;
+			case 255: strTmp = "type ANY"; break;
+			default: strText.Format("type UNKNOWN(%hu)", type); break;
+			}
+			strText += strTmp + ", ";
+
+			switch (classes)
+			{
+			case 1: strTmp = "class INTERNET"; break;
+			case 2: strTmp = "class CSNET";	break;
+			case 3: strTmp = "class COAS";	break;
+			default: strText.Format("class UNKNOWN(%hu)", classes); break;
+			}
+			strText += strTmp + ", ";
+
+			strText.Format("ttl %lu", ttl);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据长度 */
+			p += sizeof(DNS_Answer);
+			byteCounter += sizeof(DNS_Answer);
+
+			u_short data_len = ntohs(*(u_short*)p);
+
+			strText.Format("len %hu", data_len);
+			strText += strTmp + ", ";
+
+			/* 指向资源数据 */
+			p += sizeof(u_short);
+			byteCounter += sizeof(u_short);
+
+			/* 查询类型为NS、CNAME、PTR的资源数据 */
+			if (type == 2 || type == 5 || type == 12)
+			{
+
+				/* 资源数据为指针0xc0 + 偏移量*/
+				if (*(char*)p == 0xc0)
+				{
+					/* 根据偏移量获取数据
+					char *data = (char*)(pkt_data + offset + *(char*)(p+1));			// 域名
+					char *data1 = (char*)malloc(strlen(data)+1);
+
+					translateName(data1, data);
+
+					strText.Format("%s", data1);
+					strText += strTmp;
+
+					free(data1);
+					*/
+
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, 2);
+					translateName(data1, data);
+
+					strText.Format("%s", data1);
+					strText += strTmp;
+				}
+				/* 资源数据存在指针0xc0 + 偏移量 */
+				else if (isNamePtr(p))
+				{
+					char data[70];
+					char data1[70];
+
+					translateData(dnsh, data, p, data_len);		// 去掉指针0xc0+偏移量
+					translateName(data1, data);								// 去掉'.'
+
+					strText.Format("%s", data1);
+					strText += strTmp;
+				}
+				/* 资源数据中不存在指针0xc0 + 偏移量 */
+				else
+				{
+					char *data = (char*)malloc(data_len);
+
+					translateName(data, p);
+
+					strText.Format("%s", data);
+					strText += strTmp;
+					free(data);
+
+				}
+			}
+			/* 查询类型为A的资源数据 */
+			else if (type == 1)
+			{
+				IP_Address data = *(IP_Address*)p;
+				strText += IPAddr2CString(data);
+			}
+
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DNSAdditionalNode, 0);
+
+			/* 跳过数据部分 */
+			p += data_len;
+			byteCounter += data_len;
+
+		}// if
+		additionalNum++;
+	}// while
+	return byteCounter;
+}
+
+/**
+*	@brief	打印DNS报文到树形控件
+*	@param	pkt 数据包
+*	@param	parentNode 父节点
+*	@return	0 插入成功	-1 插入失败
+*/
 int printDNS2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 {
+	if (pkt.isEmpty() || pkt.dnsh == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+	HTREEITEM DNSNode = printDNSBanner(pkt, parentNode);
+
+	printDNSHeader(pkt.dnsh, DNSNode);
+
+
+	char *DNSQuery = (char*)pkt.dnsh + DNS_HEADER_LENGTH;
+	int DNSQueryLen = printDNSQuery(DNSQuery, ntohs(pkt.dnsh->questions), DNSNode);
+
+	char *DNSAnswer = NULL, *DNSAuthority = NULL, *DNSAdditional = NULL;
+	int DNSAnswerLen = 0, DNSAuthorityLen = 0;
+
+	if (pkt.dnsh->answers > 0)
+	{
+		DNSAnswer = DNSQuery + DNSQueryLen;
+		DNSAnswerLen = printDNSAnswer(DNSAnswer, ntohs(pkt.dnsh->answers), pkt.dnsh, DNSNode);
+	}
+
+	if (pkt.dnsh->authority > 0)
+	{
+		DNSAuthority = DNSAnswer + DNSAnswerLen;
+		DNSAuthorityLen = printDNSAuthority(DNSAuthority, ntohs(pkt.dnsh->authority), pkt.dnsh, DNSNode);
+	}
+	
+
+	if (pkt.dnsh->additional > 0)
+	{
+		DNSAdditional = DNSAuthority + DNSAuthorityLen;
+		printDNSAdditional(DNSAdditional, ntohs(pkt.dnsh->additional), pkt.dnsh, DNSNode);
+	}
+
+
 	return 0;
 }
 
+/**
+*	@brief	打印DHCP首部到树形控件
+*	@param	pkt 数据包
+*	@param	parentNode 父节点
+*	@return	0 插入成功	-1 插入失败
+*/
 int printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 {
+	if (pkt.isEmpty() || pkt.dhcph == NULL || parentNode == NULL)
+	{
+		return -1;
+	}
+
+	HTREEITEM DHCPNode = g_pTreeCtrlPacketInfo->InsertItem("DHCP", parentNode, 0);
+	CString strText, strTmp;
+	/* 解析dhcp首部 */
+	strText.Format("报文类型：%d", pkt.dhcph->op);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText.Format("硬件类型：%d", pkt.dhcph->htype);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText.Format("硬件地址长度：%d", pkt.dhcph->hlen);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+	strText.Format("跳数：%d",pkt.dhcph->hops);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText.Format("事务ID：0x%08lX", ntohl(pkt.dhcph->xid));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText.Format("客户启动时间：%hu", ntohs(pkt.dhcph->secs));
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText.Format("标志：0x%04hX", ntohs(pkt.dhcph->flags));
+	switch(ntohs(pkt.dhcph->flags) >> 15)
+	{
+	case DHCP_FLAGS_BROADCAST: strText += "（广播）"; break;
+	case DHCP_FLAGS_UNICAST: strText += "（单播）"; break;
+	}
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "客户机IP地址：" + IPAddr2CString(pkt.dhcph->ciaddr);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "你的（客户）IP地址：" + IPAddr2CString(pkt.dhcph->yiaddr);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "服务器IP地址：" + IPAddr2CString(pkt.dhcph->siaddr);;
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "网关IP地址：" + IPAddr2CString(pkt.dhcph->giaddr);
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	/*  解析dhcp首部剩余部分 */
+	CString strChaddr;
+	for (int i=0; i< 6; ++i)
+	{
+		strText.Format("%02X", pkt.dhcph->chaddr[i]);
+		strChaddr += strTmp + "-";
+	}
+	strChaddr.Delete(strChaddr.GetLength() - 1, 1);
+
+	strText = "客户机MAC地址：" + strChaddr;
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "服务器主机名：";
+	strTmp.Format("%s", pkt.dhcph->snamer);
+	strText += strTmp;
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	strText = "引导文件名：";
+	strTmp.Format("%s", pkt.dhcph->file);
+	strText += strTmp;
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	
+	// 跳过引导文件名
+	u_char *p = (u_char*)pkt.dhcph->file + 128;
+	
+	if(ntohl(*(u_long*)p) == 0x63825363)
+	{
+		strText = "Magic cookie: DHCP";
+		g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+	}
+	
+	// 跳过magic cookie
+	p += 4;
+	
+	while(*p != 0xFF)
+	{
+		switch (*p)
+		{
+		case DHCP_OPTIONS_DHCP_MESSAGE_TYPE:
+		{
+			strText = "选项：（53）DHCP报文类型";
+			switch (*(p + 2))
+			{
+			case 1: strText += "（Discover）"; break;
+			case 2: strText += "（Offer）"; break;
+			case 3: strText += "（Request）"; break;
+			case 4: strText += "（Decline）"; break;
+			case 5: strText += "（ACK）"; break;
+			case 6: strText += "（NAK）"; break;
+			case 7: strText += "（Release）"; break;
+			case 8: strText += "（Inform）"; break;
+			}
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			strText.Format("长度：%d", *(++p));
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			strText.Format("DHCP：%d", *(++p));
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			// 指向下一个选项
+			++p;
+		}
+			break;
+
+		case DHCP_OPTIONS_REQUESTED_IP_ADDRESS:
+		{
+			strText = "选项：（50）请求IP地址";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			strText.Format("长度：%d", *(++p));
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			IP_Address *addr = (IP_Address*)(++p);
+			strText = "地址：" + IPAddr2CString(*addr);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			// 指向下一个选项
+			p += 4;
+		}
+			break;
+
+		case DHCP_OPTIONS_IP_ADDRESS_LEASE_TIME:
+		{
+			strText = "选项：（51）IP地址租约时间";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			strText.Format("长度：%d", *(++p));
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			u_int time = *(++p);
+			strText.Format("租约时间：%u", time);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			// 指向下一个选项
+			p += 4;
+		}
+			break;
+
+		case DHCP_OPTIONS_CLIENT_IDENTIFIER:
+		{
+			strText = "选项：（61）客户机标识";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			strText = "硬件类型：";
+			if (*(++p) == 0x01)
+			{
+				strText += "以太网（0x01）";
+				g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+				MAC_Address *addr = (MAC_Address*)(++p);
+				strText = "客户机标识：" + MACAddr2CString(*addr);
+				g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+				p += 6;
+			}
+			else
+			{
+				strText.Format("%d", *p);
+				strText += strTmp;
+				g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+				p += len;
+			}
+		}
+			break;
+
+		case DHCP_OPTIONS_VENDOR_CLASS_IDENTIFIER:
+		{
+			strText = "选项：（60）供应商类标识";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			int count = 0;
+			strText = "供应商类标识：";
+			for (; count < len; count++)
+			{
+				strText.Format("%c", *(++p));
+				strText += strTmp;
+			}
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			++p;
+		}
+			break;
+
+		case DHCP_OPTIONS_SERVER_IDENTIFIER:
+		{
+			strText = "选项：（54）服务器标识";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			IP_Address *addr = (IP_Address*)(++p);
+			strText = "服务器标识：" + IPAddr2CString(*addr);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			p += 4;
+		}
+			break;
+
+		case DHCP_OPTIONS_SUBNET_MASK:
+		{
+
+		
+			strText = "选项：（1）子网掩码";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			IP_Address *submask = (IP_Address*)(++p);
+			strText = "子网掩码：" + IPAddr2CString(*submask);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			p += 4;
+		}
+			break;
+
+		case DHCP_OPTIONS_ROUTER_OPTION:
+		{
+
+		
+			strText = "选项：（3）路由器";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			int count = 0;
+			while (count < len)
+			{
+				IP_Address *addr = (IP_Address*)(++p);
+				strText = "路由器：" + IPAddr2CString(*addr);
+				g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+				count += 4;
+				p += 4;
+			}
+		}
+			break;
+
+		case DHCP_OPTIONS_DOMAIN_NAME_SERVER_OPTION: 
+		{
+			strText = "选项：（6）DNS服务器";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			int count = 0;
+			++p;
+			while (count < len)
+			{
+				IP_Address *addr = (IP_Address*)(p);
+				strText = "DNS服务器：" + IPAddr2CString(*addr);
+				g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+				count += 4;
+				p += 4;
+			}
+		}
+			break;
+
+
+		case DHCP_OPTIONS_HOST_NAME_OPTION:
+		{
+			strText = "选项：（12）主机名";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			int count = 0;
+			strText = "主机名：";
+
+			for (; count < len; count++)
+			{
+				strText.Format("%c", *(++p));
+				strText += strTmp;
+			}
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			++p;
+		}
+			break;
+
+		case DHCP_OPTIONS_PAD_OPTION:
+			++p;
+			break;
+
+		default:
+		{
+			strTmp.Format("选项：（%d", *p);
+			strText += strTmp + "）";
+			HTREEITEM DHCPOptionNode = g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);
+
+			int len = *(++p);
+			strText.Format("长度：%d", len);
+			g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPOptionNode, 0);
+
+			// 指向选项内容
+			++p;
+
+			// 跳过选项内容
+			p += len;
+		}
+			break;
+		}// switch 
+	
+	}// while
+	strText = "选项：（255）结束";
+	g_pTreeCtrlPacketInfo->InsertItem(strText, DHCPNode, 0);	 
+		
 	return 0;
 }
 
@@ -1112,7 +2204,7 @@ int printHTTP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	}
 
 	u_char *p = pkt.httpmsg;
-	int HTTPMsgLen = ntohs(pkt.iph->totallen) - (pkt.iph->ver_headerlen & 0x0F) * 4 - (ntohs(pkt.tcph->headerlen_rsv_flags) >> 12)*4;
+	int HTTPMsgLen = pkt.getL4PayloadLength();
 		
 	CString strText;
 	if (ntohs(pkt.tcph->dstport) == PORT_HTTP)
@@ -1202,2032 +2294,6 @@ void CSnifferUIDlg::OnClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 	printEditCtrlPacketData(pkt);
 }
 
-///* 存储以太网帧 */
-//void saveFrame(const u_char *pkt_data, int offset)
-//{
-//	/* 获取以太网帧的类型字段、源目MAC地址 */
-//	u_short eth_type = ntohs(*(u_short*)(pkt_data + 12));
-//	mac_address *src_mac = (mac_address*)(pkt_data + 6);
-//	mac_address *dst_mac = (mac_address*)(pkt_data);
-//	
-//	/* 将类型、源目MAC地址保存到链表的尾结点上 */
-//	linklist.GetTail().saddr = *src_mac;
-//	linklist.GetTail().daddr = *dst_mac;
-//	linklist.GetTail().eth_type = eth_type;
-//	
-//	/* 根据以太网帧中类型字段存储报文 */
-//	switch(eth_type)
-//	{
-//	case 0x0800: saveIP(pkt_data, 14); 
-//					break;
-//	case 0x0806: saveARP(pkt_data, 14); 
-//					pList1->SetItemText(list_rows, ++list_cols, "ARP"); 
-//					break;
-//	default: break;
-//	}
-//	
-//}
-//
-///* 存储IP包 */
-//void saveIP(const u_char *pkt_data, int offset)				//offset为ip首部距离pkt_data的偏移量
-//{
-//	ip_header *ip_hdr = (ip_header*)(pkt_data + offset);
-//
-//	/* 存储ip首部到链表中 */
-//	ip_header *p ;
-//
-//	p = (ip_header*)malloc(sizeof(ip_header));
-//	p->ver_hrdlen = ip_hdr->ver_hrdlen;
-//	p->tos = ip_hdr->tos;
-//	p->totallen = ip_hdr->totallen;
-//	p->identifier = ip_hdr->identifier;
-//	p->flags_offset = ip_hdr->flags_offset;
-//	p->ttl = ip_hdr->ttl;
-//	p->proto = ip_hdr->proto;
-//	p->checksum = ip_hdr->checksum;
-//	p->option_padding = ip_hdr->option_padding;
-//	p->srcaddr = ip_hdr->srcaddr;
-//	p->dstaddr = ip_hdr->dstaddr;
-//
-//	linklist.GetTail().iph = p;
-//
-//	/* 根据上层协议存储报文首部 */
-//	switch(ip_hdr->proto)
-//	{
-//	case 1:		saveICMP(pkt_data, offset + (ip_hdr->ver_hrdlen & 0x0f) * 4);
-//				pList1->SetItemText(list_rows, ++list_cols, "ICMP"); 
-//				break;	//ICMP
-//
-//	case 6:		saveTCP(pkt_data, offset + (ip_hdr->ver_hrdlen & 0x0f) * 4); 
-//				break;	//TCP
-//
-//	case 17:	saveUDP(pkt_data, offset + (ip_hdr->ver_hrdlen & 0x0f) * 4); 
-//				break;	//UDP
-//
-//	default:	pList1->SetItemText(list_rows, ++list_cols, "IPv4"); 
-//				break;
-//	}
-//}
-//
-//
-///* 存储ARP包 */
-//void saveARP(const u_char *pkt_data, int offset)				//offset为ARP首部距离pkt_data的偏移量
-//{
-//	arp_header *arp_hdr = (arp_header*)(pkt_data + offset);
-//
-//	/* 存储arp首部到链表中 */
-//	arp_header *p;
-//
-//	p = (arp_header*)malloc(sizeof(arp_header));
-//	p->hardtype = arp_hdr->hardtype;
-//	p->prototype = arp_hdr->prototype;
-//	p->hardlen = arp_hdr->hardlen;
-//	p->protolen = arp_hdr->protolen;
-//	p->op = arp_hdr->op;
-//	p->srcmac = arp_hdr->srcmac;
-//	p->srcip = arp_hdr->srcip;
-//	p->dstmac = arp_hdr->dstmac;
-//	p->dstip = arp_hdr->dstip;
-//
-//	linklist.GetTail().arph = p;
-//	
-//}
-//
-///* 存储ICMP包*/
-//void saveICMP(const u_char *pkt_data,int offset)
-//{
-//	icmp_header *icmp_hdr = (icmp_header*)(pkt_data + offset);
-//
-//	/* 存储icmp首部到链表中*/
-//	icmp_header *p;
-//
-//	p = (icmp_header*)malloc(sizeof(icmp_header));
-//	p->type = icmp_hdr->type;
-//	p->code = icmp_hdr->code;
-//	p->chksum = icmp_hdr->chksum;
-//	p->others = icmp_hdr->others;
-//
-//	linklist.GetTail().icmph = p;
-//}
-//
-//
-//
-//
-//
-///* 存储UDP包 */
-//void saveUDP(const u_char *pkt_data, int offset)				//offset为UDP首部距离pkt_data的偏移量
-//{
-//	udp_header *udp_hdr = (udp_header*)(pkt_data + offset);
-//
-//	/* 存储udp首部到链表中 */
-//	udp_header* p;
-//
-//	p = (udp_header*)malloc(sizeof(udp_header));
-//	p->srcport = udp_hdr->srcport;
-//	p->dstport = udp_hdr->dstport;
-//	p->len = udp_hdr->len;
-//	p->checksum = udp_hdr->checksum;
-//
-//	linklist.GetTail().udph = p;
-//
-//	/* 根据源目端口号存储报文首部 */
-//	if(ntohs(udp_hdr->srcport) == 53 || ntohs(udp_hdr->dstport) == 53)
-//	{
-//		saveDNS(pkt_data, offset + 8);
-//		pList1->SetItemText(list_rows, ++list_cols, "DNS"); 
-//	}
-//	else if( (ntohs(udp_hdr->srcport) == 67 && ntohs(udp_hdr->dstport) == 68) || (ntohs(udp_hdr->srcport) == 68 && ntohs(udp_hdr->dstport) == 67))
-//	{
-//		pList1->SetItemText(list_rows, ++list_cols, "DHCP"); 
-//	}
-//
-//	else
-//	{
-//		pList1->SetItemText(list_rows, ++list_cols, "UDP"); 
-//	}
-//}
-//
-///* 存储TCP包 */
-//void saveTCP(const u_char *pkt_data, int offset)
-//{
-//	tcp_header *tcp_hdr = (tcp_header*)(pkt_data + offset);
-//
-//	/* 存储tcp首部到链表中*/
-//	tcp_header *p;
-//
-//	p = (tcp_header*)malloc(sizeof(tcp_header));
-//	p->srcport = tcp_hdr->srcport;
-//	p->dstport = tcp_hdr->dstport;
-//	p->seq = tcp_hdr->seq;
-//	p->ack = tcp_hdr->ack;
-//	p->hdrlen_rsv_flags = tcp_hdr->hdrlen_rsv_flags;
-//	p->win_size = tcp_hdr->win_size;
-//	p->chksum = tcp_hdr->chksum;
-//	p->urg_ptr = tcp_hdr->urg_ptr;
-//	p->option = tcp_hdr->option;
-//
-//	linklist.GetTail().tcph = p;
-//
-//	/* 根据源目端口号存储报文首部 */
-//	if(ntohs(tcp_hdr->srcport) == 53 || ntohs(tcp_hdr->dstport) == 53)
-//	{
-//		saveDNS(pkt_data, offset + (ntohs(tcp_hdr->hdrlen_rsv_flags) >> 12) * 4);
-//		pList1->SetItemText(list_rows, ++list_cols, "DNS"); 
-//	}
-//
-//	else if(ntohs(tcp_hdr->srcport) == 80 || ntohs(tcp_hdr->dstport) == 80)
-//	{	
-//		pList1->SetItemText(list_rows, ++list_cols, "HTTP"); 
-//	}
-//
-//	else
-//	{
-//		pList1->SetItemText(list_rows, ++list_cols, "TCP"); 
-//	}
-//	
-//}
-//
-///* 存储DNS */
-//void saveDNS(const u_char *pkt_data, int offset)
-//{
-//	dns_header *dns_hdr = (dns_header*)(pkt_data + offset);
-//
-//	/* 存储dns首部到链表中 */
-//	dns_header *p;
-//	p = (dns_header*)malloc(sizeof(dns_header));
-//	p->identifier = dns_hdr->identifier;
-//	p->flags = dns_hdr->flags;
-//	p->questions = dns_hdr->questions;
-//	p->answers = dns_hdr->answers;
-//	p->authority = dns_hdr->authority;
-//	p->additional = dns_hdr->additional;
-//
-//	linklist.GetTail().dnsh = p;
-//}
-//
-///* 解析以太网帧 */
-//void decodeFrame(mac_address *saddr, mac_address *daddr, u_short *eth_type, HTREEITEM parentNode)
-//{
-//	HTREEITEM hFrameItem;		//树形控件结点
-//	CString strText, strTmp;
-//
-//	strText = "以太网帧 （";
-////	strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", saddr->byte1, saddr->byte2, saddr->byte3, saddr->byte4, saddr->byte5, saddr->byte6);
-//	strText += strTmp + " -> ";
-////	strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", daddr->byte1, daddr->byte2, daddr->byte3, daddr->byte4, daddr->byte5, daddr->byte6);
-//	strText += strTmp + "）";
-//	hFrameItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//	
-//	
-//	strText = "源mac地址：";
-////	strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", saddr->byte1, saddr->byte2, saddr->byte3, saddr->byte4, saddr->byte5, saddr->byte6);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hFrameItem, 0);
-//
-//	strText = "目的mac地址：";
-////	strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", daddr->byte1, daddr->byte2, daddr->byte3, daddr->byte4, daddr->byte5, daddr->byte6);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hFrameItem, 0);
-//
-//	strText = "类型：";
-//	switch(*eth_type)
-//	{
-//	case 0x0800: strTmp = "IPv4 (0x0800)"; break;
-//	case 0x0806: strTmp = "ARP (0x0806)"; break;
-//	default: strTmp.Format("Unknown(0x%04hx)", *eth_type);	break;
-//	}
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hFrameItem, 0);
-//
-//}
-//
-///* 解析IP  */
-//void decodeIP(ip_header *iph,HTREEITEM parentNode)
-//{
-//		HTREEITEM IPNode;		//树形控件结点
-//		CString strText, strTmp;
-//
-//		strText = "IP （";
-////		strTmp.Format("%d.%d.%d.%d", iph->srcaddr.byte1, iph->srcaddr.byte2, iph->srcaddr.byte3, iph->srcaddr.byte4);
-//		strText += strTmp + " -> ";
-////		strTmp.Format("%d.%d.%d.%d", iph->dstaddr.byte1, iph->dstaddr.byte2, iph->dstaddr.byte3, iph->dstaddr.byte4);
-//		strText += strTmp + "）";
-//		IPNode = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//		strText = "版本号：";
-////		strTmp.Format("%d", iph->ver_hrdlen >> 4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		strText = "首部长度：";
-////		strTmp.Format("%d (bytes)", (iph->ver_hrdlen & 0x0f) * 4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		strText = "服务质量：";
-//		strTmp.Format("0x%02x", iph->tos);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
-//
-//		strText = "总长度： ";
-//		strTmp.Format("%hu", ntohs(iph->totallen));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
-//
-//		strText = "标识：";
-//		strTmp.Format("0x%04hx(%hu)", ntohs(iph->identifier), ntohs(iph->identifier));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
-//			
-//
-//		strText = "标志：";
-//		strTmp.Format("0x%02x", ntohs(iph->flags_offset) >> 13);
-//		strText += strTmp;
-//		HTREEITEM hIPFlag = g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
-//
-//		strText = "RSV（保留位）：0";
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hIPFlag, 0);
-//
-//		strText = "MF：";
-//		strTmp.Format("%d", (ntohs(iph->flags_offset) >> 14) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hIPFlag, 0);
-//
-//		strText = "DF：";
-//		strTmp.Format("%d", (ntohs(iph->flags_offset) >> 13) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hIPFlag, 0);
-//
-//
-//		
-//		
-//		strText = "片偏移：";
-//		strTmp.Format("%d", ntohs(iph->flags_offset) & 0x1fff);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, IPNode, 0);
-//
-//		strText = "TTL：";
-//		strTmp.Format("%u", iph->ttl);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		//strText = "协议：";
-//		//switch(iph->proto)
-//		//{
-//		//case 1:	strTmp = "ICMP (1)"; break;
-//		//case 6:	strTmp = "TCP (6)"; break;
-//		//case 17: strTmp = "UDP (17)"; break;
-//		//default: strTmp.Format("UNKNOWN(%d)", iph->proto);	break;
-//		//}
-//
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		strText = "校验和：";
-//		strTmp.Format("0x%02hx", ntohs(iph->checksum));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		strText = "源ip地址：";
-////		strTmp.Format("%d.%d.%d.%d", iph->srcaddr.byte1, iph->srcaddr.byte2, iph->srcaddr.byte3, iph->srcaddr.byte4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//		strText = "目的ip地址：";
-////		strTmp.Format("%d.%d.%d.%d", iph->dstaddr.byte1, iph->dstaddr.byte2, iph->dstaddr.byte3, iph->dstaddr.byte4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, IPNode, 0);
-//
-//}
-//
-///* 解析ARP */
-//void decodeARP(arp_header *arph, HTREEITEM parentNode)
-//{
-//	HTREEITEM hARPItem;			//树形控件结点
-//	CString strText, strTmp;
-//
-//	strText = "ARP （";
-//	/*	switch(ntohs(arph->op))
-//		{
-//		case 1:	strTmp.Format("Request"); break;
-//		case 2:	strTmp.Format("Reply");	break;
-//		}*/
-//		strText += strTmp + "）";		
-//		ARPNode= g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//		strText = "硬件类型：";
-////		strTmp.Format("%hu", ntohs(arph->hardtype), ntohs(arph->hardtype));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "协议类型：";
-////		strTmp.Format("0x%04hx (%hu)", ntohs(arph->prototype), ntohs(arph->prototype));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "硬件地址长度：";
-////		strTmp.Format("%u", arph->hardlen);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "协议地址长度：";
-////		strTmp.Format("%u", arph->protolen);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "OP：";
-////		switch(ntohs(arph->op))
-//		{
-////		case 1:	strTmp.Format("0x%04hx (Request)", ntohs(arph->op)); break;
-////		case 2:	strTmp.Format("0x%04hx (Reply)", ntohs(arph->op));	break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "源mac地址：";
-////		strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", arph->srcmac.byte1, arph->srcmac.byte2, arph->srcmac.byte3, arph->srcmac.byte4, arph->srcmac.byte5, arph->srcmac.byte1);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "源ip地址：";
-////		strTmp.Format("%d.%d.%d.%d", arph->srcip.byte1, arph->srcip.byte2, arph->srcip.byte3, arph->srcip.byte4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//		
-//		strText = "目的mac地址：";
-////		strTmp.Format("%02X-%02X-%02X-%02X-%02X-%02X", arph->dstmac.byte1, arph->dstmac.byte2, arph->dstmac.byte3, arph->dstmac.byte4, arph->dstmac.byte5, arph->dstmac.byte1);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//		strText = "目的ip地址：";
-////		strTmp.Format("%d.%d.%d.%d", arph->dstip.byte1, arph->dstip.byte2, arph->dstip.byte3, arph->dstip.byte4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hARPItem, 0);
-//
-//}
-//
-///* 解析ICMP */
-//void decodeICMP(icmp_header *icmph, HTREEITEM parentNode)
-//{
-//	HTREEITEM ICMPNode;
-//	CString strText, strTmp;
-//
-//	strText = "ICMP （";
-//
-//	switch(icmph->type)
-//	{
-//		case 0: strTmp = "回应应答报告"; break;
-//		case 3: strTmp = "信宿不可达报告"; break;
-//		case 4: strTmp = "源端抑制报告"; break;
-//		case 5: strTmp = "重定向报告"; break;
-//		case 8: strTmp = "回应请求报告"; break;
-//		case 9: strTmp = "路由器通告报告"; break;
-//		case 10: strTmp = "路由器询问报告"; break;
-//		case 11: strTmp = "超时报告"; break;
-//		case 12: strTmp = "数据报参数错误报告"; break;
-//		case 13: strTmp = "时间戳请求报告"; break;
-//		case 14: strTmp = "时间戳应答报告"; break;
-//		case 17: strTmp = "地址掩码请求报告"; break;
-//		case 18: strTmp = "地址掩码应答报告"; break;
-//		default: strTmp.Format("UNKNOWN（%d）", icmph->type); break;
-//	}
-//
-//	strText += strTmp + "）";
-//
-//	ICMPNode = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//	ip_address *addr = (ip_address*)(&(icmph->others));
-//
-//	u_short id = (u_short)(ntohl(icmph->others) >> 16);
-//	u_short seq = (u_short)(ntohl(icmph->others) & 0x0000ffff);
-//
-//	strText = "类型：";
-//	switch(icmph->type)
-//	{
-//	case 3: strTmp = "3"; 
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "代码：";
-//			switch(icmph->code)
-//			{
-//			case 0: strTmp = "0 （网络不可达）"; break;
-//			case 1: strTmp = "1 （主机不可达）"; break;
-//			case 2: strTmp = "2 （协议不可达）"; break;
-//			case 3: strTmp = "3 （端口不可达）"; break;
-//			case 6: strTmp = "6 （信宿网络未知）"; break;
-//			case 7: strTmp = "7 （信宿主机未知）"; break;
-//			default: strTmp.Format("%d （UNKNOWN）", icmph->code); break;
-//			}
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			break;
-//
-//	case 4: strTmp = "4";
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "代码：0 ";
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//			
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//			break;
-//
-//	case 5: strTmp = "5";
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "代码：";
-//			switch(icmph->code)
-//			{
-//			case 0:	strTmp = "0 （对特定网络重定向）"; break;
-//			case 1: strTmp = "1 （对特定主机重定向）"; break;
-//			case 2: strTmp = "2 （基于指定的服务类型对特定网络重定向）";break;
-//			case 3: strTmp = "3 （基于指定的服务类型对特定主机重定向）"; break;
-//			}
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//
-//			strText = "目标路由器的IP地址：";
-//			strTmp.Format("%d.%d.%d.%d", addr->byte1, addr->byte2, addr->byte3, addr->byte4);
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//			break;
-//
-//	case 11: strTmp = "11"; 
-//			 strText += strTmp;
-//			 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			 strText = "代码：";
-//			 switch(icmph->code)
-//			 {
-//			 case 0: strTmp = "0 （TTL超时）";	break;
-//			 case 1: strTmp = "1 （分片重组超时）"; break;
-//			 }
-//			 strText += strTmp;
-//			 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			 break;
-//
-//	case 8: strTmp = "8";
-//			 strText += strTmp;
-//			 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "代码：0";
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "标识：";
-//			strTmp.Format("%hu", id);
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "序号：";
-//			strTmp.Format("%hu", seq);
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			break;
-//
-//	case 0:	strTmp = "0";
-//			strText += strTmp;
-//		    g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "代码：0";
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "校验和：";
-//			strTmp.Format("0x%04hx", ntohs(icmph->chksum));
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "标识：";
-//			strTmp.Format("%hu", id);
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			strText = "序号：";
-//			strTmp.Format("%hu", seq);
-//			strText += strTmp;
-//			g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			break;
-//
-//	default: strTmp.Format("%d", icmph->type);
-//			 strText += strTmp;
-//			 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//
-//			 strText = "代码：";
-//			 strTmp.Format("%d", icmph->code);
-//
-//			 strText = "校验和：";
-//			 strTmp.Format("0x%04hx", icmph->chksum);
-//			 strText += strTmp;
-//			 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, ICMPNode, 0);
-//			 break;
-//	}
-//}
-//
-//
-///* 解析UDP */
-//void decodeUDP(udp_header *udph, HTREEITEM parentNode)
-//{
-//		HTREEITEM hUDPItem;		//树形控件结点
-//		CString strText, strTmp;
-//
-//		strText = "UDP （";
-//		strTmp.Format("%hu", ntohs(udph->srcport));
-//		strText += strTmp + " -> ";
-//		strTmp.Format("%hu", ntohs(udph->dstport));
-//		strText += strTmp + "）";
-//		hUDPItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//		strText = "源端口：";
-//		strTmp.Format("%hu", ntohs(udph->srcport));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hUDPItem, 0);
-//
-//		strText = "目的端口：";
-//		strTmp.Format("%hu", ntohs(udph->dstport));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hUDPItem, 0);
-//
-//		strText = "长度：";
-//		strTmp.Format("%hu", ntohs(udph->len));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hUDPItem, 0);
-//
-//		strText = "校验和：";
-//		strTmp.Format("0x%04hx", ntohs(udph->checksum));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hUDPItem, 0);
-//
-//}
-//
-///* 解析TCP */
-//void decodeTCP(tcp_header *tcph, HTREEITEM parentNode)
-//{
-//		HTREEITEM hTCPItem;		//树形控件结点
-//		CString strText, strTmp;
-//
-//		strText = "TCP （";
-//		strTmp.Format("%d", ntohs(tcph->srcport));
-//		strText += strTmp + " -> ";
-//		strTmp.Format("%d", ntohs(tcph->dstport));
-//		strText += strTmp + "）";
-//		hTCPItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//		strText = "源端口：";
-//		strTmp.Format("%hu", ntohs(tcph->srcport));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hTCPItem, 0);
-//
-//		strText = "目的端口：";
-//		strTmp.Format("%hu", ntohs(tcph->dstport));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hTCPItem, 0);
-//
-//		strText = "序列号：";
-//		strTmp.Format("%lu", ntohl(tcph->seq));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hTCPItem, 0);
-//
-//		strText = "确认号：";
-//		strTmp.Format("%lu", ntohl(tcph->ack));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//		strText = "首部长度：";
-//		strTmp.Format("%d (bytes)", (ntohs(tcph->hdrlen_rsv_flags) >> 12 ) * 4);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//		strText = "标志：";
-//		strTmp.Format("0x%03x", ntohs(tcph->hdrlen_rsv_flags) & 0x0fff);
-//		strText += strTmp;
-//		HTREEITEM hTCPFlag = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//		strText = "URG：";
-//		strTmp.Format("%d", (ntohs(tcph->hdrlen_rsv_flags) >> 5) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "ACK：";
-//		strTmp.Format("%d", (ntohs(tcph->hdrlen_rsv_flags) >> 4) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "PSH：";
-//		strTmp.Format("%d", (ntohs(tcph->hdrlen_rsv_flags) >> 3) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "RST：";
-//		strTmp.Format("%d", (ntohs(tcph->hdrlen_rsv_flags) >> 2) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "SYN：";
-//		strTmp.Format("%d", (ntohs(tcph->hdrlen_rsv_flags) >> 1) & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "FIN：";
-//		strTmp.Format("%d", ntohs(tcph->hdrlen_rsv_flags)  & 0x0001);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hTCPFlag, 0);
-//
-//		strText = "窗口大小：";
-//		strTmp.Format("%hu", ntohs(tcph->win_size));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//		strText = "校验和：";
-//		strTmp.Format("0x%04hx", ntohs(tcph->chksum));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//		strText = "紧急指针：";
-//		strTmp.Format("%hu", ntohs(tcph->urg_ptr));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,  hTCPItem, 0);
-//
-//
-//}
-//
-//
-///* 解析DNS  offset为到dns首部的偏移量 */
-//void decodeDNS(u_char *pkt_data, int offset, dns_header *dnsh, HTREEITEM parentNode)
-//{
-//		HTREEITEM hDNSItem;			//树形控件结点
-//		CString strText, strTmp;
-//
-//		strText = "DNS （";
-//		switch(dnsh->flags >> 15)
-//		{
-//		case 0:	strTmp = "Query）";		break;
-//		case 1:	strTmp = "Response）";	break;
-//		}
-//		strText += strTmp;
-//		hDNSItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//		strText = "标识：";
-//		strTmp.Format("0x%04hx (%hu)", ntohs(dnsh->identifier), ntohs(dnsh->identifier)); 
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		strText = "标志：";
-//		strTmp.Format("0x%04hx", ntohs(dnsh->flags));
-//		strText += strTmp;
-//
-//		HTREEITEM hDNSFlag = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//		/* 标志子字段 */
-//		strText = "QR：";
-//		switch(ntohs(dnsh->flags) >> 15)
-//		{
-//		case 0: strTmp = "0 （查询报文）"	;	break;
-//		case 1: strTmp = "1 （响应报文）";	break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "OpCode：";
-//		switch((ntohs(dnsh->flags) >> 11) & 0x000f)
-//		{
-//		case 0: strTmp = "0 （标准查询）";	break;
-//		case 1:	strTmp = "1 （反向查询）";	break;
-//		case 2: strTmp = "2 （服务器状态请求）"; break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "AA：";
-//		switch((ntohs(dnsh->flags) >> 10) & 0x0001)
-//		{
-//		case 0:	strTmp = "0 （非授权回答）"; break;
-//		case 1: strText = "1 （授权回答）"; break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "TC：";
-//		switch((ntohs(dnsh->flags) >> 9) & 0x0001)
-//		{
-//		case 0: strTmp = "0 （报文未截断）"; break;
-//		case 1: strTmp = "1 （报文截断）";	break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "RD：";
-//		switch((ntohs(dnsh->flags) >> 8) & 0x0001)
-//		{
-//		case 0: strTmp = "0"; break;
-//		case 1: strTmp = "1 （希望进行递归查询）";	break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "RA：";
-//		switch((ntohs(dnsh->flags) >> 7) & 0x0001)
-//		{
-//		case 0: strTmp = "0 （服务器不支持递归查询）"; break;
-//		case 1: strTmp = "1 （服务器支持递归查询）";	break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "Reserved：";
-//		strTmp.Format("%d", (ntohs(dnsh->flags) >> 4) & 0x0007);
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "rCode：";
-//		switch(ntohs(dnsh->flags)  & 0x000f)
-//		{
-//		case 0: strTmp = "0 （无差错）";		break;
-//		case 1: strTmp = "1 （格式差错）";	break;	
-//		case 2: strTmp = "2 （DNS服务器问题）";	break;
-//		case 3: strTmp = "3 （域名不存在或出错）";	break;
-//		case 4: strTmp = "4 （查询类型不支持）";	break;
-//		case 5: strTmp = "5 （在管理上禁止）";	break;
-//		default: strTmp.Format("%d（保留）", ntohs(dnsh->flags) & 0x000f);				break;
-//		}
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSFlag, 0);
-//
-//		strText = "查询记录数：";
-//		strTmp.Format("%hu", ntohs(dnsh->questions));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		strText = "回答记录数：";
-//		strTmp.Format("%hu", ntohs(dnsh->answers));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		strText = "授权回答记录数：";
-//		strTmp.Format("%hu", ntohs(dnsh->authority));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		strText = "附加信息记录数：";
-//		strTmp.Format("%hu", ntohs(dnsh->additional));
-//		strText += strTmp;
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		strText = "查询部分：";
-//		HTREEITEM hDNSQuery = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		/* 查询部分 */
-//		char *p = (char*)(pkt_data + offset + 12);	
-//
-//		int query_num = 0, answer_num = 0, authority_num = 0, additional_num = 0;
-//
-//		if(ntohs(dnsh->questions) < 10)
-//		{
-//			while(query_num < ntohs(dnsh->questions))
-//			{
-//				char *name1 = (char*)malloc(strlen(p)+1);
-//
-//				translateName(name1, p);
-//			
-//				/* 跳过域名字段 */
-//				while(*p)
-//				{
-//					++p;
-//				}
-//				++p;
-//
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				dns_query *dnsq = (dns_query*)p;
-//				u_short	type, classes;
-//
-//				type = ntohs(dnsq->type);
-//				classes = ntohs(dnsq->classes);
-//				
-//				switch(type)
-//				{
-//				case 1:	strTmp = "type A"; break;
-//				case 2:	strTmp = "type NS"; break;
-//				case 5: strTmp = "type CNAME"; break;
-//				case 6: strTmp = "type SOA"; break;
-//				case 12: strTmp = "type PTR"; break;
-//				case 15: strTmp = "type MX"; break;
-//				case 28: strTmp = "type AAAA"; break;
-//				case 255: strTmp = "type ANY"; break;
-//				default: strTmp.Format("type UNKNOWN(%hu)", type); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				switch(classes)
-//				{
-//				case 1: strTmp = "class INTERNET"; break;
-//				case 2: strTmp = "class CSNET";	break;
-//				case 3: strTmp = "class COAS";	break;
-//				default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
-//				}
-//				strText += strTmp;
-//
-//				g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSQuery, 0);
-//
-//				/* 跳过查询类型和查询类字段 */
-//				p += sizeof(dns_query);
-//
-//				query_num++;
-//				free(name1);
-//			}
-//		}
-//
-//		strText = "回答部分：";
-//		HTREEITEM hDNSAnswer = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		/* 回答部分 */
-//		while(answer_num < ntohs(dnsh->answers))
-//		{
-//
-//			/* 指向指针 */
-//			if(*(u_char*)p == 0xc0)
-//			{
-//				
-//				/* 指向偏移量 		
-//				++p;	
-//				
-//				char *name = (char*)(pkt_data + offset + *(u_char*)p);			// 域名
-//				char *name1 = (char*)malloc(strlen(name)+1);
-//
-//			
-//				translateName(name1, name);
-//				
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//  				free(name1);
-//				*/
-//					
-//				char name[70];
-//				char name1[70];
-//
-//				translateData(pkt_data, offset, name, p, 2);
-//				translateName(name1, name);
-//
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				/* 指向偏移量 */
-//				++p;
-//
-//
-//				/* 指向类型*/
-//				++p;
-//				dns_answer *dnsa = (dns_answer*)p;
-//
-//				u_short type =  ntohs(dnsa->type);
-//				u_short classes = ntohs(dnsa->classes);
-//				u_long  ttl  = ntohl(dnsa->ttl);
-//
-//				switch(type)
-//				{
-//				case 1:	strTmp = "type A"; break;
-//				case 2:	strTmp = "type NS"; break;
-//				case 5: strTmp = "type CNAME"; break;
-//				case 6: strTmp = "type SOA"; break;
-//				case 12: strTmp = "type PTR"; break;
-//				case 15: strTmp = "type MX"; break;
-//				case 28: strTmp = "type AAAA"; break;
-//				case 255: strTmp = "type ANY"; break;
-//				default: strTmp.Format("type UNKNOWN(%hu)", type); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				switch(classes)
-//				{
-//				case 1: strTmp = "class INTERNET"; break;
-//				case 2: strTmp = "class CSNET";	break;
-//				case 3: strTmp = "class COAS";	break;
-//				default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				strTmp.Format("ttl %lu", ttl);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据长度 */
-//				p += sizeof(dns_answer);
-//				
-//				u_short data_len = ntohs(*(u_short*)p);
-//
-//				strTmp.Format("len %hu", data_len);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据 */
-//				p += sizeof(u_short);
-//
-//				/* 查询类型为NS、CNAME、PTR的资源数据 */
-//				if(type == 2 || type == 5 || type == 12)
-//				{
-//	
-//					/* 资源数据为指针0xc0 + 偏移量*/
-//					if(*(u_char*)p == 0xc0)
-//					{				
-//						/* 根据偏移量获取数据 											
-//						char *data = (char*)(pkt_data + offset + *(u_char*)(p+1));			// 域名
-//						char *data1 = (char*)malloc(strlen(data)+1);
-//
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//
-//						free(data1);
-//						*/
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, 2);
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//
-//					}
-//					/* 资源数据存在指针0xc0 + 偏移量 */
-//					else if(isNamePtr(p))
-//					{
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, data_len);		// 去掉指针0xc0+偏移量
-//						translateName(data1, data);								// 去掉'.'
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//					}
-//					/* 资源数据中不存在指针0xc0 + 偏移量 */
-//					else
-//					{
-//						char *data = (char*)malloc(data_len);
-//
-//						translateName(data, p);
-//
-//						strTmp.Format("%s", data);
-//						strText += strTmp;
-//						free(data);
-//						
-//					}
-//				}
-//				/* 查询类型为A的资源数据 */
-//				else if(type == 1)
-//				{
-//					ip_address data = *(ip_address*)p;
-//
-//					strTmp.Format("%d.%d.%d.%d", data.byte1, data.byte2, data.byte3, data.byte4);
-//					strText += strTmp;
-//				}
-//
-//				g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSAnswer, 0);
-//			
-//				/* 跳过数据部分 */
-//				p += data_len;
-//
-//		
-//
-//			}//if
-//			answer_num++;
-//		}
-//
-//		strText = "授权回答部分：";
-//		HTREEITEM hDNSAuthority = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		/* 授权回答部分 */
-//		while(authority_num < ntohs(dnsh->authority))
-//		{
-//
-//			/* 指向指针 */
-//			if(*(u_char*)p == 0xc0)
-//			{
-//				
-//				/* 指向偏移量 		
-//				++p;	
-//				
-//				char *name = (char*)(pkt_data + offset + *(u_char*)p);			// 域名
-//				char *name1 = (char*)malloc(strlen(name)+1);
-//				translateName(name1, name);
-//				
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				free(name1);
-//				*/
-//				char name[70];
-//				char name1[70];
-//
-//				translateData(pkt_data, offset, name, p, 2);
-//				translateName(name1, name);
-//
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				/* 指向偏移量 */
-//				++p;
-//
-//				/* 指向类型*/
-//				++p;
-//				dns_answer *dnsa = (dns_answer*)p;
-//
-//				u_short type =  ntohs(dnsa->type);
-//				u_short classes = ntohs(dnsa->classes);
-//				u_long  ttl  = ntohl(dnsa->ttl);
-//
-//				switch(type)
-//				{
-//				case 1:	strTmp = "type A"; break;
-//				case 2:	strTmp = "type NS"; break;
-//				case 5: strTmp = "type CNAME"; break;
-//				case 6: strTmp = "type SOA"; break;
-//				case 12: strTmp = "type PTR"; break;
-//				case 15: strTmp = "type MX"; break;
-//				case 28: strTmp = "type AAAA"; break;
-//				case 255: strTmp = "type ANY"; break;
-//				default: strTmp.Format("type UNKNOWN(%hu)", type); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				switch(classes)
-//				{
-//				case 1: strTmp = "class INTERNET"; break;
-//				case 2: strTmp = "class CSNET";	break;
-//				case 3: strTmp = "class COAS";	break;
-//				default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				strTmp.Format("ttl %lu", ttl);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据长度 */
-//				p += sizeof(dns_answer);
-//				
-//				u_short data_len = ntohs(*(u_short*)p);
-//
-//				strTmp.Format("len %hu", data_len);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据 */
-//				p += sizeof(u_short);
-//
-//				/* 查询类型为NS、CNAME、PTR的资源数据 */
-//				if(type == 2 || type == 5 || type == 12)
-//				{
-//	
-//					/* 资源数据为指针0xc0 + 偏移量*/
-//					if(*(u_char*)p == 0xc0)
-//					{				
-//						/* 根据偏移量获取数据 											
-//						char *data = (char*)(pkt_data + offset + *(u_char*)(p+1));			// 域名
-//						char *data1 = (char*)malloc(strlen(data)+1);
-//
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//
-//						free(data1);
-//						*/
-//
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, 2);
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//					}
-//					/* 资源数据存在指针0xc0 + 偏移量 */
-//					else if(isNamePtr(p))
-//					{
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, data_len);		// 去掉指针0xc0+偏移量
-//						translateName(data1, data);								// 去掉'.'
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//					}
-//					/* 资源数据中不存在指针0xc0 + 偏移量 */
-//					else
-//					{
-//						char *data = (char*)malloc(data_len);
-//
-//						translateName(data, p);
-//
-//						strTmp.Format("%s", data);
-//						strText += strTmp;
-//						free(data);
-//						
-//					}
-//				}
-//				/* 查询类型为A的资源数据 */
-//				else if(type == 1)
-//				{
-//					ip_address data = *(ip_address*)p;
-//
-//					strTmp.Format("%d.%d.%d.%d", data.byte1, data.byte2, data.byte3, data.byte4);
-//					strText += strTmp;
-//				}
-//
-//				g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSAuthority, 0);
-//			
-//				/* 跳过数据部分 */
-//				p += data_len;
-//
-//
-//			}//if
-//			authority_num++;
-//		}
-//
-//		strText = "附加信息部分：";
-//		HTREEITEM hDNSAdditional = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSItem, 0);
-//
-//		/* 附加信息部分 */
-//		while(additional_num < ntohs(dnsh->additional))
-//		{
-//
-//			/* 指向指针 */
-//			if(*(u_char*)p == 0xc0)
-//			{
-//				
-//				/* 指向偏移量 		
-//				++p;	
-//				
-//				char *name = (char*)(pkt_data + offset + *(u_char*)p);			// 域名
-//				char *name1 = (char*)malloc(strlen(name)+1);
-//
-//				translateName(name1, name);
-//				
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				free(name1);
-//				*/
-//				char name[70];
-//				char name1[70];
-//
-//				translateData(pkt_data, offset, name, p, 2);
-//				translateName(name1, name);
-//
-//				strText.Format("%s", name1);
-//				strText += "：";
-//
-//				/* 指向偏移量 */
-//				++p;
-//
-//				/* 指向类型*/
-//				++p;
-//				dns_answer *dnsa = (dns_answer*)p;
-//
-//				u_short type =  ntohs(dnsa->type);
-//				u_short classes = ntohs(dnsa->classes);
-//				u_long  ttl  = ntohl(dnsa->ttl);
-//
-//				switch(type)
-//				{
-//				case 1:	strTmp = "type A"; break;
-//				case 2:	strTmp = "type NS"; break;
-//				case 5: strTmp = "type CNAME"; break;
-//				case 6: strTmp = "type SOA"; break;
-//				case 12: strTmp = "type PTR"; break;
-//				case 15: strTmp = "type MX"; break;
-//				case 28: strTmp = "type AAAA"; break;
-//				case 255: strTmp = "type ANY"; break;
-//				default: strTmp.Format("type UNKNOWN(%hu)", type); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				switch(classes)
-//				{
-//				case 1: strTmp = "class INTERNET"; break;
-//				case 2: strTmp = "class CSNET";	break;
-//				case 3: strTmp = "class COAS";	break;
-//				default: strTmp.Format("class UNKNOWN(%hu)", classes); break;
-//				}
-//				strText += strTmp + ", ";
-//
-//				strTmp.Format("ttl %lu", ttl);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据长度 */
-//				p += sizeof(dns_answer);
-//				
-//				u_short data_len = ntohs(*(u_short*)p);
-//
-//				strTmp.Format("len %hu", data_len);
-//				strText += strTmp + ", ";
-//
-//				/* 指向资源数据 */
-//				p += sizeof(u_short);
-//
-//				/* 查询类型为NS、CNAME、PTR的资源数据 */
-//				if(type == 2 || type == 5 || type == 12)
-//				{
-//	
-//					/* 资源数据为指针0xc0 + 偏移量*/
-//					if(*(u_char*)p == 0xc0)
-//					{				
-//						/* 根据偏移量获取数据 											
-//						char *data = (char*)(pkt_data + offset + *(u_char*)(p+1));			// 域名
-//						char *data1 = (char*)malloc(strlen(data)+1);
-//
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//
-//						free(data1);
-//						*/
-//
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, 2);
-//						translateName(data1, data);
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//					}
-//					/* 资源数据存在指针0xc0 + 偏移量 */
-//					else if(isNamePtr(p))
-//					{
-//						char data[70];
-//						char data1[70];
-//
-//						translateData(pkt_data, offset, data, p, data_len);		// 去掉指针0xc0+偏移量
-//						translateName(data1, data);								// 去掉'.'
-//
-//						strTmp.Format("%s", data1);
-//						strText += strTmp;
-//					}
-//					/* 资源数据中不存在指针0xc0 + 偏移量 */
-//					else
-//					{
-//						char *data = (char*)malloc(data_len);
-//
-//						translateName(data, p);
-//
-//						strTmp.Format("%s", data);
-//						strText += strTmp;
-//						free(data);
-//						
-//					}
-//				}
-//				/* 查询类型为A的资源数据 */
-//				else if(type == 1)
-//				{
-//					ip_address data = *(ip_address*)p;
-//
-//					strTmp.Format("%d.%d.%d.%d", data.byte1, data.byte2, data.byte3, data.byte4);
-//					strText += strTmp;
-//				}
-//
-//				g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDNSAdditional, 0);
-//			
-//				/* 跳过数据部分 */
-//				p += data_len;
-//
-//			}//if
-//			additional_num++;
-//		}		
-//}
-//
-///* 解析HTTP offset为到HTTP报文的偏移量*/
-//void decodeHTTP(u_char *pkt_data, int offset, HTREEITEM parentNode)
-//{
-//	u_char *p = (pkt_data + offset);
-//	ip_header *iph = (ip_header*)(pkt_data + 14);
-//	tcp_header *tcph = (tcp_header*)(pkt_data + 14 + (iph->ver_hrdlen & 0x0f) *4);
-//
-//	int http_len = ntohs(iph->totallen) - (iph->ver_hrdlen & 0x0f) * 4 - (ntohs(tcph->hdrlen_rsv_flags) >> 12)*4;
-//	int count = 0;
-//
-//	CString strText;
-//	
-//	strText = "HTTP";
-//	HTREEITEM hHTTPItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//	
-//	while( count < http_len)
-//	{
-//		strText = "";
-//		while(*p != '\r')
-//		{
-//			strText += *p;
-//			++p;
-//			++count;
-//		}
-//		strText += "\\r\\n";
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hHTTPItem, 0);
-//
-//		p += 2;
-//		count += 2;
-//	}	
-//}
-//
-//
-///* 解析DHCP offset为到DHCP报文的偏移量*/
-//void decodeDHCP(u_char *pkt_data, int offset, HTREEITEM parentNode)
-//{
-//	dhcp_header *dhcph = (dhcp_header*)(pkt_data + offset);
-//	u_char *p = (u_char*)(pkt_data + offset + sizeof(dhcp_header));	//p指向客户机硬件地址
-//
-//	CString strText, strTmp;
-//
-//	strText = "DHCP";
-//	HTREEITEM hDHCPItem = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, parentNode, 0);
-//
-//	/* 解析dhcp首部 */
-//	strText = "报文类型：";
-//	strTmp.Format("%d", dhcph->op);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//	strText = "硬件类型：";
-//	strTmp.Format("%d", dhcph->htype);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//	strText = "硬件地址长度：";
-//	strTmp.Format("%d", dhcph->hlen);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//	strText = "跳数：";
-//	strTmp.Format("%d", dhcph->hops);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//	strText = "事务ID：";
-//	strTmp.Format("0x%08lx", ntohl(dhcph->xid));
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "客户启动时间：";
-//	strTmp.Format("%hu", ntohs(dhcph->secs));
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "标志：";
-//	strTmp.Format("0x%04hx", ntohs(dhcph->flags));
-//	strText += strTmp;
-//	switch(ntohs(dhcph->flags) >> 15)
-//	{
-//	case 0: strText += "（广播）"; break;
-//	case 1: strText += "（单播）"; break;
-//	}
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "客户机IP地址：";
-//	strTmp.Format("%d.%d.%d.%d", dhcph->ciaddr.byte1, dhcph->ciaddr.byte2, dhcph->ciaddr.byte3, dhcph->ciaddr.byte4);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "你的（客户）IP地址：";
-//	strTmp.Format("%d.%d.%d.%d", dhcph->yiaddr.byte1, dhcph->yiaddr.byte2, dhcph->yiaddr.byte3, dhcph->yiaddr.byte4);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "服务器IP地址：";
-//	strTmp.Format("%d.%d.%d.%d", dhcph->siaddr.byte1, dhcph->siaddr.byte2, dhcph->siaddr.byte3, dhcph->siaddr.byte4);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	strText = "网关IP地址：";
-//	strTmp.Format("%d.%d.%d.%d", dhcph->giaddr.byte1, dhcph->giaddr.byte2, dhcph->giaddr.byte3, dhcph->giaddr.byte4);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	/*  解析dhcp首部剩余部分 */
-//	mac_address *chaddr = (mac_address*)p; 
-//						
-//	strText = "客户机mac地址：";
-////	strTmp.Format("%02x-%02x-%02x-%02x-%02x-%02x", chaddr->byte1, chaddr->byte2, chaddr->byte3, chaddr->byte4, chaddr->byte5, chaddr->byte6);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	// 跳过客户机硬件地址
-//	p += 16;		
-//
-//	strText = "服务器主机名：";
-//	strTmp.Format("%s", p);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0,hDHCPItem, 0);
-//
-//	// 跳过服务器主机名
-//	p += 64;		
-//
-//	strText = "引导文件名：";
-//	strTmp.Format("%s", p);
-//	strText += strTmp;
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//	// 跳过引导文件名
-//	p += 128;
-//
-//	if(ntohl(*(u_long*)p) == 0x63825363)
-//	{
-//		strText = "Magic cookie: DHCP";
-//		g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//	}
-//
-//	// 跳过magic cookie
-//	p += 4;
-//
-//	while(*p != 0xff)
-//	{
-//		switch(*p)
-//		{
-//		case 53: 
-//			{	strText = "选项：（53）DHCP报文类型";
-//				 switch(*(p+2))
-//				 {
-//					case 1: strText += "（Discover）"; break;
-//					case 2: strText += "（Offer）"; break;
-//					case 3: strText += "（Request）"; break;
-//					case 4: strText += "（Decline）"; break;
-//					case 5: strText += "（ACK）"; break;
-//					case 6: strText += "（NAK）"; break;
-//					case 7: strText += "（Release）"; break;
-//					case 8: strText += "（Inform）"; break;
-//				 }
-//				 HTREEITEM hDHCPOption;
-//				 hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 strText = "长度：";
-//				 strTmp.Format("%d", *(++p));
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 strText = "DHCP：";
-//				 strTmp.Format("%d", *(++p));
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);
-//				 
-//				 // 指向下一个选项
-//				 ++p;
-//			}
-//			break;
-//
-//		case 50: 
-//			{	
-//				strText = "选项：（50）请求IP地址";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 strText = "长度：";
-//				 strTmp.Format("%d", *(++p));
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 ip_address *addr = (ip_address*)(++p);
-//				 strText = "地址：";
-//				 strTmp.Format("%d.%d.%d.%d", addr->byte1, addr->byte2, addr->byte3, addr->byte4);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//				 
-//				 // 指向下一个选项
-//				 p += 4;
-//			}
-//				 break;
-//
-//		case 51:
-//			{
-//				strText = "选项：（51）IP地址租约时间";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);	
-//
-//				 strText = "长度：";
-//				 strTmp.Format("%d", *(++p));
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 u_int time = *(++p);
-//				 strText = "租约时间：";
-//				 strTmp.Format("%u", time);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 // 指向下一个选项
-//				 p += 4;
-//			}
-//				 break;
-//
-//		case 61: 
-//			{
-//				 strText = "选项：（61）客户机标识";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 strText = "硬件类型：";
-//				 if(*(++p) == 0x01)
-//				 {
-//					strTmp = "以太网（0x01）";		
-//					strText += strTmp;
-//					g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//					mac_address *addr = (mac_address*)(++p);
-//					strText = "客户机标识：";
-////					strTmp.Format("%02x-%02x-%02x-%02x-%02x-%02x", addr->byte1, addr->byte2, addr->byte3, addr->byte4, addr->byte5, addr->byte6);
-//					strText += strTmp;
-//					g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//					p += 6;
-//				 }
-//				 else
-//				 {
-//					strTmp.Format("%d", *p);
-//					strText += strTmp;
-//					g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//					p += len;
-//
-//				 }	
-//			}
-//				 break;
-//
-//		case 60: 
-//			{
-//				 strText = "选项：（60）供应商类标识";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 int count = 0;
-//				 strText = "供应商类标识：";
-//
-//				 for(;count < len; count++)
-//				 {
-//					 strTmp.Format("%c", *(++p));
-//					 strText += strTmp;
-//				 }
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	 
-//
-//				 ++p;
-//			}
-//				 break;
-//
-//		case 54: 
-//			{	
-//				 strText = "选项：（54）服务器标识";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 ip_address *addr = (ip_address*)(++p);
-//				 strText = "服务器标识：";
-//				 strTmp.Format("%d.%d.%d.%d", addr->byte1, addr->byte2, addr->byte3, addr->byte4);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 p += 4;
-//			}
-//				 break;
-//
-//		case 1:	 
-//			{
-//				 strText = "选项：（1）子网掩码";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 ip_address *submask = (ip_address*)(++p);
-//				 strText = "子网掩码：";
-////				 strTmp.Format("%d.%d.%d.%d", submask->byte1, submask->byte2, submask->byte3, submask->byte4);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 p += 4;
-//			}
-//				 break;
-//
-//		case 3:  
-//			{
-//				 strText = "选项：（3）路由器";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//				 int count = 0;
-//				 while( count < len)
-//				 {
-//					 ip_address *addr = (ip_address*)(++p);
-//					 strText = "路由器：";
-//					 strTmp.Format("%d.%d.%d.%d", addr->byte1, addr->byte2, addr->byte3, addr->byte4);
-//					 strText += strTmp;
-//					 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//					 count += 4;
-//					 p += 4;
-//				 }
-//			}
-//				 break;
-//
-//		case 6:  
-//			{
-//				 strText = "选项：（6）DNS服务器";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	 
-//
-//				 int count = 0;
-//				 ++p;
-//				 while( count < len)
-//				 {
-//					 ip_address *addr = (ip_address*)p;
-//					 strText = "DNS服务器：";
-//					 strTmp.Format("%d.%d.%d.%d", addr->byte1, addr->byte2, addr->byte3, addr->byte4);
-//					 strText += strTmp;
-//					 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	
-//
-//					 count += 4;
-//					 p += 4;
-//				 }
-//			}
-//				 break;
-//
-//
-//		case 12: 
-//			{	
-//				 strText = "选项：（12）主机名";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	 
-//
-//				 int count = 0;
-//				 strText = "主机名：";
-//
-//				 for(;count < len; count++)
-//				 {
-//					 strTmp.Format("%c", *(++p));
-//					 strText += strTmp;
-//				 }
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	 
-//
-//				 ++p;
-//			}
-//				 break;
-//
-//		case 0: ++p;
-//				break;
-//
-//		default: strText = "选项：（";
-//				 strTmp.Format("%d", *p);
-//				 strText += strTmp + "）";
-//				 HTREEITEM hDHCPOption = g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);
-//
-//				 int len = *(++p);
-//				 strText = "长度：";
-//				 strTmp.Format("%d", len);
-//				 strText += strTmp;
-//				 g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPOption, 0);	 
-//
-//				 // 指向选项内容
-//				 ++p;
-//
-//				 // 跳过选项内容
-//				 p += len;
-//				 break;
-//		}
-//
-//	}
-//	strText = "选项：（255）结束";
-//	g_pTreeCtrlPacketInfo->InsertItem(strText, 0, 0, hDHCPItem, 0);	 
-//	
-//
-//
-//}
-//
-///* 判断data中有无指针0xc0,并返回指针在data中的位置*/
-//int isNamePtr(char *data)
-//{
-//	char *p = data;
-//	int pos = 0;
-//
-//	while(*p)
-//	{
-//		if(*(u_char*)p == 0xc0)
-//		{
-//			return pos;
-//		}
-//		++p;
-//		++pos;
-//	}
-//
-//	return 0;
-//}
-//void translateName(char *name1, const char *name2)
-//{
-//	strcpy(name1, name2);
-//
-//	char *p = name1;
-//	bool canMove = false;
-//
-//	if( !isalnum(*(u_char*)p) && *(u_char*)p !=  '-')
-//	{
-//		canMove = true;
-//	}
-//
-//	/* 将计数转换为'.' */
-//	while(*p)
-//	{
-//		if(!isalnum(*(u_char*)p) && *(u_char*)p != '-')
-//			*p = '.';
-//
-//		++p;
-//	}
-//
-//
-//	/* 将域名整体向前移1位 */
-//	if(canMove)
-//	{
-//		p = name1;
-//		while(*p)
-//		{
-//			*p = *(p+1);
-//			++p;
-//		}
-//	}
-//
-//	
-//}
-//
-///* DNS资源记录数据部分转换 将带有指针0xc0的data2转换为不带指针的data1 offset为到dns首部的偏移量*/
-//void translateData(u_char *pkt_data, int offset, char *data1, char *data2, int data2_len)
-//{
-//	char *p = data2;
-//	int count = 0, i = 0;
-//
-//	/* 遍历data2 */
-//	while(count < data2_len )
-//	{			
-//		/* 指针 */
-//		if(*(u_char*)p == 0xc0)
-//		{
-//			++p;
-//
-//			/* 读取指针所指向的数据 */
-//			char *data_ptr = (char*)(pkt_data + offset + *(u_char*)p);
-//
-//			int pos;
-//			pos = isNamePtr(data_ptr);
-//			if(pos)
-//			{
-//				translateData(pkt_data, offset, data1+i, data_ptr, pos+2);
-//			}
-//			else
-//			{
-//				strcpy(data1+i, data_ptr);
-//				i += strlen(data_ptr)+1;
-//			}
-//			count += 2;
-//		}
-//		else 
-//		{
-//			data1[i++] = *p;
-//			++p;
-//			++count;
-//		}
-//
-//	}
-//}
-//
-//
-//
-//
-///* 点击列表事件 */
-//void CSnifferUIDlg::OnClickList1(NMHDR* pNMHDR, LRESULT* pResult) 
-//{
-//	// TODO: Add your control notification handler code here
-//	
-//	HTREEITEM hIDItem;		//树形控件结点
-//
-//	int sel_row;
-//	u_short *eth_type;
-//	mac_address *saddr, *daddr;
-//	arp_header	*arph;
-//	ip_header	*iph;
-//	icmp_header *icmph;
-//	udp_header	*udph;
-//	tcp_header	*tcph;
-//	dns_header	*dnsh;
-//
-//	CString strText,strTmp;
-//	
-//
-//	/* 删除所有结点 */
-//	m_tree.DeleteAllItems();
-//
-//	/* 获取选中行的行号 */
-//	sel_row = pList1->GetSelectionMark();
-//
-//	/* 获取选中行的报文信息 */
-//	POSITION pos = linklist.FindIndex(sel_row);
-//	packet_header *ppkth = &linklist.GetAt(pos);
-//	if(ppkth == NULL)
-//	{
-//		AfxMessageBox("ppkth为空指针", MB_OK);
-//		return;
-//	}
-//
-//	saddr = &ppkth->saddr;
-//	daddr = &ppkth->daddr;
-//	eth_type = &ppkth->eth_type;
-//	arph = ppkth->arph;
-//	iph = ppkth->iph;
-//	icmph = ppkth->icmph;
-//	udph = ppkth->udph;
-//	tcph = ppkth->tcph;
-//	dnsh = ppkth->dnsh;
-//
-//	/* 打印数据包到编辑框 */
-//	int count = 0;
-//	u_char *p = ppkth->pkt_data;
-//	while(count < ppkth->caplen)
-//	{
-//		strTmp.Format("%02hx ", *p);
-//		strText += strTmp;
-//
-//		++p;
-//		++count;
-//	}	
-//	GetDlgItem(IDC_EDIT1)->SetWindowText(strText);
-//
-//
-//	/* 建立编号结点 */
-//	strText.Format("第%d个数据包", sel_row + 1);
-//	hIDItem = m_tree.InsertItem(strText);
-//
-//	/* 建立以太网帧结点 */
-//	decodeFrame(saddr, daddr, eth_type, &hIDItem);
-//	
-//	/* 建立ip结点 */
-//	if(iph != NULL)
-//	{
-//		decodeIP(iph, &hIDItem);		
-//	}
-//	
-//	/* 建立arp结点 */
-//	if(arph != NULL)
-//	{
-//		decodeARP(arph, &hIDItem);
-//	}
-//
-//	/* 建立icmp结点 */
-//	if(icmph != NULL)
-//	{
-//		decodeICMP(icmph, &hIDItem);
-//	}
-//															
-//	/* 建立udp结点 */
-//	if(udph != NULL)
-//	{
-//		decodeUDP(udph, &hIDItem);	
-//	}
-//
-//	/* 建立tcp结点 */
-//	if(tcph != NULL)
-//	{
-//		decodeTCP(tcph, &hIDItem);
-//	}
-//
-//	/* 建立dns结点 */
-//	if(dnsh != NULL)
-//	{
-//		int offset;
-//
-//		switch(iph->proto)
-//		{
-//		case 6:	 offset = 14 + (iph->ver_hrdlen & 0x0f)*4 + (ntohs(tcph->hdrlen_rsv_flags) >> 12)*4;	break;	//tcph
-//		case 17: offset = 14 + (iph->ver_hrdlen & 0x0f)*4 + 8 ;	break;											//udph 
-//			
-//		}
-//		 
-//															
-//		decodeDNS(ppkth->pkt_data, offset, dnsh, &hIDItem);	
-//	}
-//
-//	/* 建立http结点 */
-//	if(tcph != NULL && (ntohs(tcph->srcport) == 80 || ntohs(tcph->dstport) == 80))
-//	{
-//		int offset = 14 + (iph->ver_hrdlen & 0x0f)*4 + (ntohs(tcph->hdrlen_rsv_flags) >> 12)*4;
-//
-//		decodeHTTP(ppkth->pkt_data, offset,&hIDItem);
-//	}
-//
-//	/* 建立dhcp结点 */
-//	if(udph != NULL && ( (ntohs(udph->srcport) == 67 && ntohs(udph->dstport) == 68) || (ntohs(udph->srcport) == 68 && ntohs(udph->dstport) == 67) ))
-//	{
-//		int offset = 14 + (iph->ver_hrdlen & 0x0f)*4 + 8;
-//
-//		decodeDHCP(ppkth->pkt_data, offset, &hIDItem);
-//	}
-//	*pResult = 0;
-//}
-
-
 /**
 *	@brief	点击超链接打开Github
 *	@param
@@ -3238,4 +2304,155 @@ void CAboutDlg::OnNMClickSyslink1(NMHDR *pNMHDR, LRESULT *pResult)
 	PNMLINK pNMLink = (PNMLINK)pNMHDR;
 	ShellExecuteW(NULL, L"open", pNMLink->item.szUrl, NULL, NULL, SW_SHOWNORMAL);
 	*pResult = 0;
+}
+
+/**
+*	@brief	根据协议名给ListCtrl控件的Item填充底色
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMLVCUSTOMDRAW pNMCD = (LPNMLVCUSTOMDRAW)pNMHDR;
+	*pResult = 0;
+	if (CDDS_PREPAINT == pNMCD->nmcd.dwDrawStage)
+	{
+		*pResult = CDRF_NOTIFYITEMDRAW;
+	}
+	else if(CDDS_ITEMPREPAINT == pNMCD->nmcd.dwDrawStage) 
+	{
+
+		COLORREF itemColor;
+
+		POSITION pos = g_packetLinkList.FindIndex(pNMCD->nmcd.dwItemSpec);
+		Packet &pkt = g_packetLinkList.GetAt(pos);
+
+		if (pkt.protocol == "ARP")
+		{
+			itemColor = RGB(255, 182, 193);
+		}
+		else if (pkt.protocol == "ICMP")
+		{
+			itemColor = RGB(186, 85, 211);
+		}
+		else if (pkt.protocol == "TCP")
+		{
+			itemColor = RGB(144, 238, 144);
+		}
+		else if (pkt.protocol == "UDP")
+		{
+			itemColor = RGB(100, 149, 237);
+
+		}
+		else if (pkt.protocol == "DNS")
+		{
+			itemColor = RGB(135, 206, 250);
+		}
+		else if (pkt.protocol == "DHCP")
+		{
+			itemColor = RGB(189, 254, 76);
+		}
+		else if (pkt.protocol == "HTTP")
+		{
+			itemColor = RGB(238, 232, 180);
+		}
+		else
+		{
+			itemColor = RGB(211, 211, 211);
+		}
+
+		pNMCD->clrTextBk = itemColor;
+		*pResult = CDRF_DODEFAULT;
+	}
+}
+
+void translateName(char *name1, const char *name2)
+{
+	strcpy(name1, name2);
+
+	char *p = name1;
+	bool canMove = false;
+
+	if (!isalnum(*(u_char*)p) && *(u_char*)p != '-')
+	{
+		canMove = true;
+	}
+
+	/* 将计数转换为'.' */
+	while (*p)
+	{
+		if (!isalnum(*(u_char*)p) && *(u_char*)p != '-')
+			*p = '.';
+
+		++p;
+	}
+
+
+	/* 将域名整体向前移1位 */
+	if (canMove)
+	{
+		p = name1;
+		while (*p)
+		{
+			*p = *(p + 1);
+			++p;
+		}
+	}
+}
+
+/* DNS资源记录数据部分转换 将带有指针0xc0的data2转换为不带指针的data1 offset为到dns首部的偏移量*/
+void translateData(const DNS_Header *dnsh, char *data1, char *data2, const int data2_len)
+{
+	char *p = data2;
+	int count = 0, i = 0;
+
+	/* 遍历data2 */
+	while (count < data2_len)
+	{
+		/* 指针 */
+		if (*(u_char*)p == 0xC0)
+		{
+			++p;
+
+			/* 读取指针所指向的数据 */
+			char *data_ptr = (char*)((u_char*)dnsh + *(u_char*)p);
+
+			int pos = isNamePtr(data_ptr);
+			if (pos)
+			{
+				translateData(dnsh, data1 + i, data_ptr, pos + 2);
+			}
+			else
+			{
+				strcpy(data1 + i, data_ptr);
+				i += strlen(data_ptr) + 1;
+			}
+			count += 2;
+		}
+		else
+		{
+			data1[i++] = *p;
+			++p;
+			++count;
+		}
+	}
+
+}
+/* 判断data中有无指针0xc0,并返回指针在data中的位置*/
+int isNamePtr(char *data)
+{
+	char *p = data;
+	int pos = 0;
+
+	while (*p)
+	{
+		if (*(u_char*)p == 0xC0)
+		{
+			return pos;
+		}
+		++p;
+		++pos;
+	}
+
+	return 0;
 }

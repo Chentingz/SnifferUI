@@ -66,6 +66,18 @@
     <Image Include="res\SnifferUI.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="res\btnPause.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\btnStart.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\btnStop.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\btnStart.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\SnifferUI.rc2">

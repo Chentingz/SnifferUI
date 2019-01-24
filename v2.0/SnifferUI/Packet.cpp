@@ -39,11 +39,7 @@ Packet::Packet(const Packet &p)
 		header = (struct pcap_pkthdr *)malloc(sizeof( *(p.header) ));
 		memcpy(header, p.header, sizeof(*(p.header)));
 
-		if (decodeEthernet() == -1)
-		{
-			AfxMessageBox("decodeEthernet失败");
-			return;
-		}
+		decodeEthernet();
 	}
 	else
 	{
@@ -72,11 +68,7 @@ Packet::Packet(const u_char *pkt_data, const struct pcap_pkthdr *header)
 		this->header = (struct pcap_pkthdr *)malloc(sizeof(*header));
 		memcpy(this->header, header, sizeof(*header));
 
-		if (decodeEthernet() == -1)
-		{
-			AfxMessageBox("decodeEthernet失败");
-			return;
-		}
+		decodeEthernet();
 	}
 	else
 	{
@@ -85,8 +77,17 @@ Packet::Packet(const u_char *pkt_data, const struct pcap_pkthdr *header)
 	}
 }
 
+/**
+*	@brief	赋值运算符函数
+*	@param	p	数据包
+*	@return 实例本身
+*/
 Packet & Packet::operator=(const Packet & p)
 {
+	if (this == &p)
+	{
+		return *this;
+	}
 	ethh = NULL;
 	iph = NULL;
 	arph = NULL;
@@ -113,11 +114,7 @@ Packet & Packet::operator=(const Packet & p)
 		}
 		memcpy(header, p.header, sizeof(*(p.header)));
 
-		if (decodeEthernet() == -1)
-		{
-			AfxMessageBox("decodeEthernet失败");
-			return *this;
-		}
+		decodeEthernet();
 	}
 	else
 	{
@@ -204,19 +201,19 @@ int Packet::decodeIP(u_char * L2payload)
 
 	protocol = "IPv4";
 	iph = (IP_Header*)(L2payload);
-	u_short ip_header_len = (iph->ver_headerlen & 0x0f) * 4;
+	u_short IPHeaderLen = (iph->ver_headerlen & 0x0f) * 4;
 	switch (iph->protocol)
 	{
 		case PROTOCOL_ICMP:		
-			decodeICMP(L2payload + ip_header_len);
+			decodeICMP(L2payload + IPHeaderLen);
 			break;	
 
 		case PROTOCOL_TCP:		
-			decodeTCP(L2payload + ip_header_len);
+			decodeTCP(L2payload + IPHeaderLen);
 			break;	
 
 		case PROTOCOL_UDP:
-			decodeUDP(L2payload + ip_header_len);
+			decodeUDP(L2payload + IPHeaderLen);
 			break;	
 
 		default:
@@ -274,14 +271,19 @@ int Packet::decodeTCP(u_char * L3payload)
 	protocol = "TCP";
 	tcph = (TCP_Header*)(L3payload);
 
-	u_short tcp_header_len = (ntohs(tcph->headerlen_rsv_flags) >> 12) * 4;
+	u_short TCPHeaderLen = (ntohs(tcph->headerlen_rsv_flags) >> 12) * 4;
 	if (ntohs(tcph->srcport) == PORT_DNS || ntohs(tcph->dstport) == PORT_DNS)
 	{
-		decodeDNS(L3payload + tcp_header_len);
+		decodeDNS(L3payload + TCPHeaderLen);
 	}
 	else if (ntohs(tcph->srcport) == PORT_HTTP || ntohs(tcph->dstport) == PORT_HTTP)
 	{
-		decodeHTTP(L3payload + tcp_header_len);
+		int HTTPMsgLen = getL4PayloadLength();
+		if (HTTPMsgLen > 0)
+		{
+			decodeHTTP(L3payload + TCPHeaderLen);
+		}
+		
 	}
 	return 0;
 }
@@ -363,3 +365,20 @@ int Packet::decodeHTTP(u_char * L4payload)
 	return 0;
 }
 
+/**
+*	@brief 获取应用层消息长度
+*	@param	-
+*	@return 应用层消息长度
+*/
+int Packet::getL4PayloadLength() const
+{
+	if (iph == NULL || tcph == NULL)
+	{
+		return 0;
+	}
+	int IPTotalLen = ntohs(iph->totallen);
+	int IPHeaderLen = (iph->ver_headerlen & 0x0F) * 4;
+	int TCPHeaderLen = (ntohs(tcph->headerlen_rsv_flags) >> 12 ) * 4;
+
+	return IPTotalLen - IPHeaderLen - TCPHeaderLen ;
+}

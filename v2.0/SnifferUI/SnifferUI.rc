@@ -7,7 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include "winres.h"
+#include "afxres.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -96,11 +96,11 @@ FONT 9, "宋体", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_COMBO1,0,15,235,131,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "List4",IDC_LIST1,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,0,46,603,132
-    PUSHBUTTON      "开始",IDC_START,239,13,53,16
-    PUSHBUTTON      "结束",IDC_STOP,351,13,53,16,WS_DISABLED
+    PUSHBUTTON      "开始",IDC_START,239,13,53,16,BS_BITMAP
+    PUSHBUTTON      "结束",IDC_STOP,351,13,53,16,BS_BITMAP | WS_DISABLED
     CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | WS_BORDER | WS_HSCROLL | WS_TABSTOP,0,187,282,182
-    EDITTEXT        IDC_EDIT1,320,187,283,182,ES_MULTILINE | ES_READONLY | WS_VSCROLL
-    PUSHBUTTON      "暂停",IDC_PAUSE,295,13,53,16,WS_DISABLED
+    EDITTEXT        IDC_EDIT1,283,187,320,182,ES_MULTILINE | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "暂停",IDC_PAUSE,295,13,53,16,BS_BITMAP | WS_DISABLED
 END
 
 
@@ -211,7 +211,19 @@ END
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
 
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE 4, 2
+#pragma code_page(936)
+#endif //_WIN32
+#include "res\SnifferUI.rc2"  // non-Microsoft Visual C++ edited resources
+#include "l.chs\afxres.rc"          // Standard components
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

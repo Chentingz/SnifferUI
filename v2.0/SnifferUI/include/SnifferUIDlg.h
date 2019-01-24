@@ -53,6 +53,8 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 //	afx_msg void OnBnClickedPause();
+public:
+	afx_msg void OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}

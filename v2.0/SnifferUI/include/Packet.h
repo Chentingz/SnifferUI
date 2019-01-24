@@ -35,4 +35,6 @@ public:
 	int decodeDNS(u_char *L4payload);
 	int decodeDHCP(u_char *L4payload);
 	int decodeHTTP(u_char *L4payload);
+
+	int getL4PayloadLength() const;
 };

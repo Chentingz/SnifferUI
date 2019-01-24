@@ -26,3 +26,4 @@
 
 #endif // !defined(AFX_STDAFX_H__47697B5F_E989_4176_81F2_B94DCF858011__INCLUDED_)
 
+//#include "../resource.h""
