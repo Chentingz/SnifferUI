@@ -9,13 +9,17 @@
 char filename[50];
 
 /* 控件指针 */
-CButton		*g_pBtnStart;
-CButton		*g_pBtnPause;
-CButton		*g_pBtnStop;
-CComboBox	*g_pComboBoxDevList;
-CListCtrl	*g_pListCtrlPacketList;
-CTreeCtrl	*g_pTreeCtrlPacketInfo;
-CEdit		*g_pEditCtrlPacketData;
+CButton			*g_pBtnStart;
+CButton			*g_pBtnPause;
+CButton			*g_pBtnStop;
+CButton			*g_pBtnFilter;
+CButton			*g_pBtnClear;
+CComboBox		*g_pComboBoxDevList;
+CListCtrl		*g_pListCtrlPacketList;
+CTreeCtrl		*g_pTreeCtrlPacketInfo;
+CEdit			*g_pEditCtrlPacketData;
+//CRichEditCtrl	*g_pRichEditCtrlFilterInput;
+CComboBox		*g_pComboBoxlFilterInput;
 
 /* 网卡信息 */
 pcap_if_t *g_pAllDevs,*g_pDev;
@@ -33,6 +37,8 @@ int g_listctrlPacketListRows = -1;
 int g_listctrlPacketListCols = 0;
 int g_listctrlPacketListCount = 0;
 
+u_short g_packetCaptureSum = 0;
+
 /* 链表，储存Packet类实例 */
 CList<Packet, Packet> g_packetLinkList;
 
@@ -45,10 +51,12 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 /* 控件初始化 */
 void initialComboBoxDevList();
 void initialListCtrlPacketList();
+void initialComboBoxFilterList();
 
 /* 打印 */
 int printListCtrlPacketList(const Packet &pkt);
 int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList);
+int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const CString &filter);
 
 
 int	printEditCtrlPacketData(const Packet &pkt);
@@ -69,10 +77,14 @@ CString	MACAddr2CString(const MAC_Address &addr);
 CString	IPAddr2CString(const IP_Address &addr);
 
 /* 域名转换 将规定格式的name2转换为域名name1 */
-void translateName(char *name1, const char *name2);
+void translateNameInDNS(char *name1, const char *name2);
 
 /* DNS资源记录数据部分转换 将带有指针c0的地址data2转换为地址data1 offset为到dns首部的偏移量*/
 void translateData(const DNS_Header *dnsh, char *data1, char *data2, const int data2_len);
 
 /* 判断data中有无指针0xc0,并返回指针在data中的位置*/
-int isNamePtr(char *data);
+int is0xC0PointerInName(char *name);
+
+CString getNameInDNS(char *name, const DNS_Header *pDNSHeader);
+CString get0xC0PointerValue(const DNS_Header *pDNSHeader, const int offset);
+int is0xC0PointerInName(char *name);

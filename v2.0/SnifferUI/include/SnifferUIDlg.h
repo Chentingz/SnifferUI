@@ -21,13 +21,18 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CSnifferUIDlg)
 	enum { IDD = IDD_SNIFFERUI_DIALOG };
-	CButton		btnStart_;
-	CButton		btnPause_;
-	CButton		btnStop_;
-	CComboBox	comboboxDevlist_;
-	CListCtrl	listctrlPacketList_;
-	CTreeCtrl	treectrlPacketInfo_;
-	CEdit		editCtrlPacketData_;
+	CButton			btnStart_;
+	CButton			btnPause_;
+	CButton			btnStop_;
+	CButton			btnFilter_;
+	CButton			btnClear_;
+	CComboBox		comboBoxDevlist_;
+	CListCtrl		listCtrlPacketList_;
+	CTreeCtrl		treeCtrlPacketInfo_;
+	CEdit			editCtrlPacketData_;
+	//CRichEditCtrl	richEditCtrlFilterInput_;
+	CComboBox		comboBoxFilterInput_;
+
 	//}}AFX_DATA
 
 	// ClassWizard generated virtual function overrides
@@ -38,7 +43,7 @@ public:
 
 // Implementation
 protected:
-	HICON m_hIcon;
+	HICON		m_hIcon;
 	CWinThread *myWinThread;
 	// Generated message map functions
 	//{{AFX_MSG(CSnifferUIDlg)
@@ -49,12 +54,12 @@ protected:
 	afx_msg void OnClickedStart();
 	afx_msg void OnClickedPause();
 	afx_msg void OnClickedStop();
+	afx_msg void OnClickedFilter();
+	afx_msg void OnClickedClear();
 	afx_msg void OnClickList1(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-//	afx_msg void OnBnClickedPause();
-public:
-	afx_msg void OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}

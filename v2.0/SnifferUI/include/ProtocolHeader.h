@@ -19,7 +19,7 @@
 #define	ARP_OPCODE_REPLY		2
 
 /**
-*	@brief	ICMP_TYPE
+*	@brief	ICMP Type
 */
 #define ICMP_TYPE_ECHO_REPLY													0
 #define	ICMP_TYPE_DESTINATION_UNREACHABLE										3
@@ -34,7 +34,7 @@
 #define ICMP_TYPE_TIMESTAMP_REPLY												14
 
 /**
-*	@brief	ICMP_CODE
+*	@brief	ICMP Code
 */
 #define ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_NET_UNREACHABLE					0
 #define ICMP_TYPE_DESTINATION_UNREACHABLE_CODE_HOST_UNREACHABLE					1
@@ -65,15 +65,57 @@
 /**
 *	@brief DNS Flags
 */
-#define DNS_FLAGS_QR_REQUEST	0
-#define DNS_FLAGS_QR_REPLY		1
+#define DNS_FLAGS_QR_REQUEST					0
+#define DNS_FLAGS_QR_REPLY						1
 
 #define DNS_FLAGS_OPCODE_STANDARD_QUERY			0
 #define DNS_FLAGS_OPCODE_INVERSE_QUERY			1
 #define DNS_FLAGS_OPCODE_SERVER_STATUS_REQUEST	2
 
+#define DNS_FLAGS_RCODE_NO_ERROR				0
+#define DNS_FLAGS_RCODE_FORMAT_ERROR			1
+#define DNS_FLAGS_RCODE_SERVER_FAILURE			2
+#define DNS_FLAGS_RCODE_NAME_ERROR				3
+#define DNS_FLAGS_RCODE_NOT_IMPLEMENTED			4
+#define DNS_FLAGS_RCODE_REFUSED					5
+/**
+*	@brief	DNS Type in Resource Record
+*			see more in RFC1035
+*/
+#define DNS_TYPE_A		1	// implemented
+#define DNS_TYPE_NS		2	// implemented
+#define DNS_TYPE_MD		3
+#define DNS_TYPE_MF		4
+#define DNS_TYPE_CNAME	5	// implemented
+#define DNS_TYPE_SOA	6	// implemented
+#define DNS_TYPE_MB		7
+#define DNS_TYPE_MG		8
+#define DNS_TYPE_MR		9
+#define DNS_TYPE_NULL	10
+#define DNS_TYPE_WKS	11
+#define DNS_TYPE_PTR	12	// implemented
+#define DNS_TYPE_HINFO	13
+#define DNS_TYPE_MINFO	14
+#define DNS_TYPE_MX		15
+#define DNS_TYPE_TXT	16
+#define DNS_TYPE_AAAA	28	// implemented
+#define DNS_TYPE_ANY	255	// implemented
 
+/**
+*	@brief	DNS Class in Resource Record
+*			see more in RFC1035
+*/
+#define DNS_CLASS_IN	1
+#define DNS_CLASS_CS	2
+#define DNS_CLASS_CH	3
+#define DNS_CLASS_HS	4
 
+/**
+*	@brief	DNS Resource Record Type
+*/
+#define DNS_RESOURCE_RECORD_TYPE_ANSWER			0
+#define DNS_RESOURCE_RECORD_TYPE_AUTHORITY		1
+#define DNS_RESOURCE_RECORD_TYPE_ADDITIONAL		2
 
 /** 
 *	@brief DHCP Flags and Options
@@ -216,10 +258,10 @@ typedef struct ARP_Header
 	u_char		hwlen;					// 硬件长度
 	u_char		plen;					// 协议长度
 	u_short		opcode;					// 操作码
-	MAC_Address	srcmac;					// 源mac地址
-	IP_Address	srcip;					// 源ip地址
-	MAC_Address	dstmac;					// 目的mac地址
-	IP_Address	dstip;					// 目的ip地址
+	MAC_Address	srcmac;					// 源MAC地址
+	IP_Address	srcip;					// 源IP地址
+	MAC_Address	dstmac;					// 目的MAC地址
+	IP_Address	dstip;					// 目的IP地址
 
 }ARP_Header;
 
@@ -261,26 +303,30 @@ typedef struct DNS_Header
 	u_short		identifier;				// 标识
 	u_short		flags;					// 标志
 	u_short		questions;				// 查询记录数
-	u_short		answers;				// 回答记录数
-	u_short		authority;				// 授权回答记录数
-	u_short		additional;				// 附加信息记录数
+	u_short		answer_RRs;				// 回答记录数
+	u_short		authority_RRs;			// 授权回答记录数
+	u_short		additional_RRs;			// 附加信息记录数
 
 }DNS_Header;
 
 typedef struct DNS_Query
 {
+//	char*		name					// 域名（变长）
 	u_short		type;					// 查询类型
 	u_short		classes;				// 查询类
 
 }DNS_Query;
 
-typedef struct DNS_Answer
+typedef struct DNS_ResourceRecord
 {
+//	char*		name					// 域名（变长）
 	u_short		type;					// 类型
 	u_short		classes;				// 类
 	u_int		ttl;					// 生存时间
+//	u_short		data_length				// 资源数据长度
+//	char*		data					// 资源数据（变长）
 
-}DNS_Answer;
+}DNS_ResourceRecord;
 
 typedef struct DHCP_Header
 {
@@ -298,7 +344,7 @@ typedef struct DHCP_Header
 	u_char		chaddr[16];				// 客户硬件地址
 	u_char		snamer[64];				// 服务器主机名
 	u_char		file[128];				// 启动文件名
-//  options(variable)					// 选项（变长）
+//  char*		options					// 选项（变长）
 	
 }DHCP_Header;
 

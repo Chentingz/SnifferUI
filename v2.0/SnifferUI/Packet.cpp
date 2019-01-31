@@ -14,6 +14,7 @@ Packet::Packet()
 	httpmsg = NULL;
 
 	pkt_data = NULL;
+	num = -1;
 	header = NULL;
 }
 
@@ -38,6 +39,8 @@ Packet::Packet(const Packet &p)
 
 		header = (struct pcap_pkthdr *)malloc(sizeof( *(p.header) ));
 		memcpy(header, p.header, sizeof(*(p.header)));
+		
+		num = p.num;
 
 		decodeEthernet();
 	}
@@ -45,10 +48,11 @@ Packet::Packet(const Packet &p)
 	{
 		pkt_data = NULL;
 		header = NULL;
+		num = -1;
 	}
 }
 
-Packet::Packet(const u_char *pkt_data, const struct pcap_pkthdr *header)
+Packet::Packet(const u_char *pkt_data, const struct pcap_pkthdr *header, const u_short &packetNum)
 {
 	ethh = NULL;
 	iph = NULL;
@@ -59,6 +63,7 @@ Packet::Packet(const u_char *pkt_data, const struct pcap_pkthdr *header)
 	dnsh = NULL;
 	dhcph = NULL;
 	httpmsg = NULL;
+	num = packetNum;
 
 	if (pkt_data != NULL && header != NULL)
 	{
@@ -96,7 +101,7 @@ Packet & Packet::operator=(const Packet & p)
 	tcph = NULL;
 	dnsh = NULL;
 	dhcph = NULL;
-	httpmsg = NULL;
+
 
 	if (!p.isEmpty())
 	{
@@ -114,12 +119,16 @@ Packet & Packet::operator=(const Packet & p)
 		}
 		memcpy(header, p.header, sizeof(*(p.header)));
 
+		num = p.num;
+
 		decodeEthernet();
 	}
 	else
 	{
 		pkt_data = NULL;
 		header = NULL;
+		httpmsg = NULL;
+		num = -1;
 	}
 	return *this;
 }
@@ -135,6 +144,7 @@ Packet::~Packet()
 	dnsh = NULL;
 	dhcph = NULL;
 	httpmsg = NULL;
+	num = -1;
 
 	free(pkt_data);
 	pkt_data = NULL;
@@ -366,6 +376,226 @@ int Packet::decodeHTTP(u_char * L4payload)
 }
 
 /**
+*	@brief	获取IP首部长度
+*	@param	-
+*	@return IP首部长度
+*/
+int Packet::getIPHeaderLegnth() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return (iph->ver_headerlen & 0x0F) * 4;
+}
+
+/**
+*	@brief	获取IP首部长度原始值
+*	@param	-
+*	@return IP首部长度原始值	-1	IP首部为空
+*/
+int Packet::getIPHeaderLengthRaw() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return (iph->ver_headerlen & 0x0F);
+}
+
+/**
+*	@brief	获取IP首部标志
+*	@param	-
+*	@return IP首部标志	-1	IP首部为空
+*/
+int Packet::getIPFlags() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return ntohs(iph->flags_offset) >> 13;
+}
+
+/**
+*	@brief	获取IP首部标志DF位
+*	@param	-
+*	@return IP首部标志DF位	-1	IP首部为空
+*/
+int Packet::getIPFlagDF() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return (ntohs(iph->flags_offset) >> 13) & 0x0001;
+}
+
+/**
+*	@brief	获取IP首部标志MF位
+*	@param	-
+*	@return IP首部标志MF位	-1	IP首部为空
+*/
+int Packet::getIPFlagsMF() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return (ntohs(iph->flags_offset) >> 14) & 0x0001;
+}
+
+/**
+*	@brief	获取IP首部片偏移
+*	@param	-
+*	@return IP首部片偏移	-1	IP首部为空
+*/
+int Packet::getIPOffset() const
+{
+	if (iph == NULL)
+		return -1;
+	else
+		return	ntohs(iph->flags_offset) & 0x1FFF;
+}
+
+/**
+*	@brief	获取ICMP首部Other字段中的Id
+*	@param	-
+*	@return ICMP首部Other字段中的Id	-1	ICMP首部为空
+*/
+u_short Packet::getICMPID() const
+{
+	if (icmph == NULL)
+		return -1;
+	else
+	return (u_short)(ntohl(icmph->others) >> 16);
+}
+
+/**
+*	@brief	获取ICMP首部Other字段中的Seq
+*	@param	-
+*	@return ICMP首部Other字段中的Seq	-1	ICMP首部为空
+*/
+u_short Packet::getICMPSeq() const
+{
+	if (icmph == NULL)
+		return -1;
+	else
+		return (u_short)(ntohl(icmph->others) & 0x0000FFFF);
+}
+
+/**
+*	@brief	获取TCP首部长度
+*	@param	-
+*	@return TCP首部长度	-1	TCP首部为空
+*/
+int Packet::getTCPHeaderLength() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 12) * 4;
+}
+
+/**
+*	@brief	获取TCP首部长度原始值
+*	@param	-
+*	@return TCP首部长度原始值	-1	TCP首部为空
+*/
+int Packet::getTCPHeaderLengthRaw() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 12) ;
+}
+
+/**
+*	@brief	获取TCP首部标志
+*	@param	-
+*	@return TCP首部标志	-1	TCP首部为空
+*/
+u_short Packet::getTCPFlags() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return  ntohs(tcph->headerlen_rsv_flags) & 0x0FFF;
+}
+
+/**
+*	@brief	获取TCP首部标志URG
+*	@param	-
+*	@return TCP首部标志URG	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsURG() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 5) & 0x0001;
+}
+
+/**
+*	@brief	获取TCP首部标志ACK
+*	@param	-
+*	@return TCP首部标志ACK	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsACK() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 4) & 0x0001;
+}
+
+/**
+*	@brief	获取TCP首部标志PSH
+*	@param	-
+*	@return TCP首部标志PSH	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsPSH() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 3) & 0x0001;
+}
+
+/**
+*	@brief	获取TCP首部标志RST
+*	@param	-
+*	@return TCP首部标志RST	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsRST() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 2) & 0x0001;
+}
+
+/**
+*	@brief	获取TCP首部标志SYN
+*	@param	-
+*	@return TCP首部标志SYN	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsSYN() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return (ntohs(tcph->headerlen_rsv_flags) >> 1) & 0x0001;
+}
+
+/**
+*	@brief	获取TCP首部标志FIN
+*	@param	-
+*	@return TCP首部标志FIN	-1	TCP首部为空
+*/
+int Packet::getTCPFlagsFIN() const
+{
+	if (tcph == NULL)
+		return -1;
+	else
+		return ntohs(tcph->headerlen_rsv_flags) & 0x0001;
+}
+/**
 *	@brief 获取应用层消息长度
 *	@param	-
 *	@return 应用层消息长度
@@ -381,4 +611,108 @@ int Packet::getL4PayloadLength() const
 	int TCPHeaderLen = (ntohs(tcph->headerlen_rsv_flags) >> 12 ) * 4;
 
 	return IPTotalLen - IPHeaderLen - TCPHeaderLen ;
+}
+
+/**
+*	@brief	获取DNS首部标志QR
+*	@param	-
+*	@return DNS首部标志QR	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsQR() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return	dnsh->flags >> 15;
+}
+
+/**
+*	@brief	获取DNS首部标志OPCODE
+*	@param	-
+*	@return DNS首部标志OPCODE	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsOPCODE() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return	(ntohs(dnsh->flags) >> 11) & 0x000F;
+}
+
+/**
+*	@brief	获取DNS首部标志AA
+*	@param	-
+*	@return DNS首部标志AA	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsAA() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return (ntohs(dnsh->flags) >> 10) & 0x0001;
+}
+
+/**
+*	@brief	获取DNS首部标志TC
+*	@param	-
+*	@return DNS首部标志TC	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsTC() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return (ntohs(dnsh->flags) >> 9) & 0x0001;
+}
+
+/**
+*	@brief	获取DNS首部标志RD
+*	@param	-
+*	@return DNS首部标志RD	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsRD() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return (ntohs(dnsh->flags) >> 8) & 0x0001;
+}
+
+/**
+*	@brief	获取DNS首部标志RA
+*	@param	-
+*	@return DNS首部标志RA	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsRA() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return (ntohs(dnsh->flags) >> 7) & 0x0001;
+}
+
+/**
+*	@brief	获取DNS首部标志Z
+*	@param	-
+*	@return DNS首部标志Z	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsZ() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return (ntohs(dnsh->flags) >> 4) & 0x0007;
+}
+
+/**
+*	@brief	获取DNS首部标志RCODE
+*	@param	-
+*	@return DNS首部标志RCODE	-1	DNS首部为空
+*/
+int Packet::getDNSFlagsRCODE() const
+{
+	if (dnsh == NULL)
+		return -1;
+	else
+		return ntohs(dnsh->flags) & 0x000F;
 }
