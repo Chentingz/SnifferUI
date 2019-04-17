@@ -10,6 +10,11 @@
 * 根据协议名过滤数据包
 * 数据包保存为.pcap格式文件
 
+## Bug：
+* 过滤后原来位置的底色保持不变
+* DNS协议无法正确解析回答、授权回答、附加信息区域
+* 数据包16进制字节流格式不对齐
+
 ## v2.0更新说明：
 * 代码重构
 * 解决内存泄露问题
@@ -17,7 +22,7 @@
 
 ## 运行截图：
 ### v2.0
-<img src="https://github.com/Chentingz/SnifferUI/blob/master/v2.0/img/v2.0_interface_20190124.png" width = 75% height = 75%  />  
+<img src="https://github.com/Chentingz/SnifferUI/blob/master/v2.0/img/v2.0_interface_20190131.png" width = 75% height = 75%  />  
 
 ### v1.0
 <img src="https://github.com/Chentingz/SnifferUI/blob/master/v1.0/img/decode_dns.PNG" width = 75% height = 75%  />  
