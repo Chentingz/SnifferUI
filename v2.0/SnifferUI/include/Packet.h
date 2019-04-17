@@ -16,7 +16,7 @@ public:
 
 	u_char					*pkt_data;		// 数据包（帧）
 	struct pcap_pkthdr		*header;		// 捕获数据包长度，数据包长度，数据包到达时间
-	u_short					num;			// 数据包编号
+	u_short					num;			// 数据包编号，从1开始
 	CString					protocol;		// 协议
 
 

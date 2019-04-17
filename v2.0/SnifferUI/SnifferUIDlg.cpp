@@ -242,7 +242,7 @@ HCURSOR CSnifferUIDlg::OnQueryDragIcon()
 void CSnifferUIDlg::OnClickedStart()
 {
 	/* 若没有选中网卡，报提示信息；否则，创建线程抓包 */
-	if (g_pComboBoxDevList->GetCurSel() == CB_ERR)
+	if (g_pComboBoxDevList->GetCurSel() == CB_ERR || g_pComboBoxDevList->GetCurSel() == 0)
 	{
 		AfxMessageBox(_T("请选择网卡"), MB_OK);
 	}
@@ -320,10 +320,19 @@ bool isFilterInputInFilterList(CString filterInput)
 	filterList.AddTail("DHCP");
 	filterList.AddTail("HTTP");
 
-	for (int i = 0; i < filterList.GetCount(); ++i)
+	//for (int i = 0; i < filterList.GetCount(); ++i)
+	//{
+	//	POSITION pos = filterList.FindIndex(i);
+	//	if (filterInput == filterList.GetAt(pos))
+	//	{
+	//		return true;
+	//	}
+	//}
+	POSITION pos = filterList.GetHeadPosition();
+	for(int i = 0; i < filterList.GetCount(); ++i)
 	{
-		POSITION pos = filterList.FindIndex(i);
-		if (filterInput == filterList.GetAt(pos))
+		const CString &filter = filterList.GetNext(pos);
+		if (filterInput == filter)
 		{
 			return true;
 		}
@@ -357,16 +366,16 @@ void CSnifferUIDlg::OnClickedFilter()
 	//	// 显示过滤器背景色为红色，提示输入错误
 	//	g_pEditCtrlFilterInput->SetBackgroundColor(true, RGB(255, 182, 193));
 	//}
-	int selectedIndex = g_pComboBoxlFilterInput->GetCurSel();
-	if (selectedIndex == CB_ERR || selectedIndex == 0)
+	int selIndex = g_pComboBoxlFilterInput->GetCurSel();
+	if (selIndex == CB_ERR || selIndex == 0)
 		return;
-	CString strInput;
-	g_pComboBoxlFilterInput->GetLBText(selectedIndex, strInput);
-	if (isFilterInputInFilterList(strInput))
+	CString strFilter;
+	g_pComboBoxlFilterInput->GetLBText(selIndex, strFilter);
+	if (isFilterInputInFilterList(strFilter))
 	{
 		g_pListCtrlPacketList->DeleteAllItems();
 
-		printListCtrlPacketList(g_packetLinkList, strInput);
+		printListCtrlPacketList(g_packetLinkList, strFilter);
 	}
 }
 
@@ -394,13 +403,13 @@ UINT capture_thread(LPVOID pParam)
 {
 	/* 获取并打开选中的网卡 */
 	int selIndex = g_pComboBoxDevList->GetCurSel();
-	if(selIndex == CB_ERR )
+	if(selIndex == CB_ERR || selIndex == 0)
 	{
 		AfxMessageBox(_T("请选择网卡"),MB_OK);
 		return -1;
 	}		
-	int count = 0;
-    for(g_pDev = g_pAllDevs; count < selIndex; g_pDev = g_pDev->next, ++count);
+	int count = 0, selDevIndex = selIndex - 1;
+    for(g_pDev = g_pAllDevs; count < selDevIndex; g_pDev = g_pDev->next, ++count);
 	if((g_pAdhandle = pcap_open_live(g_pDev->name,
 					65535,
 					 PCAP_OPENFLAG_PROMISCUOUS,
@@ -414,7 +423,6 @@ UINT capture_thread(LPVOID pParam)
 	if( pcap_datalink(g_pAdhandle) != DLT_EN10MB)
 		AfxMessageBox(_T("数据链路层不是以太网"), MB_OK);
 
-	
 	pcap_dumper_t *dumpfile = NULL;	
 	/* 打开堆文件
 	strcpy(filename, "pkt_cap");
@@ -452,6 +460,7 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 
 	g_packetLinkList.AddTail(pkt);
 	Packet &pkt1 = g_packetLinkList.GetTail();
+	// TODO:检查过滤器是否启动，若启动了，则不打印最新捕获的数据包
 	printListCtrlPacketList(pkt1);
 	
 	//fclose(save_file);
@@ -464,6 +473,9 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 */
 void initialComboBoxDevList()
 {
+	g_pComboBoxDevList->AddString("选择网卡");
+	g_pComboBoxDevList->SetCurSel(0);
+
 	if (pcap_findalldevs(&g_pAllDevs, g_errbuf) == -1)
 	{
 		fprintf(stderr, "pcap_findalldevs()错误: %s\n", g_errbuf);
@@ -497,13 +509,19 @@ void initialComboBoxFilterList()
 	filterList.AddTail("HTTP");
 
 	g_pComboBoxlFilterInput->AddString("选择过滤器（可选）");
-	for (int i = 0; i < filterList.GetCount(); ++i)
+	g_pComboBoxlFilterInput->SetCurSel(0);
+
+	//for (int i = 0; i < filterList.GetCount(); ++i)
+	//{
+	//	POSITION pos = filterList.FindIndex(i);
+	//	g_pComboBoxlFilterInput->AddString(filterList.GetAt(pos));
+
+	//}
+	POSITION pos = filterList.GetHeadPosition();
+	for(int i = 0; i < filterList.GetCount(); ++i)
 	{
-		POSITION pos = filterList.FindIndex(i);
-		g_pComboBoxlFilterInput->AddString(filterList.GetAt(pos));
-
+		g_pComboBoxlFilterInput->AddString(filterList.GetNext(pos));
 	}
-
 }
 
 /**
@@ -543,35 +561,34 @@ int printListCtrlPacketList(const Packet &pkt)
 	}
 	int listctrlPacketListCols = 0;
 	/* 打印编号 */
-	CString	strCount;
-	//strCount.Format("%d", ++g_listctrlPacketListCount);
-	strCount.Format("%d", pkt.num);
-	//g_pListCtrlPacketList->InsertItem(++g_listctrlPacketListRows, strCount);
-	int row = g_pListCtrlPacketList->InsertItem(g_pListCtrlPacketList->GetItemCount(), strCount);
-	;
+	CString	strNum;
+	strNum.Format("%d", pkt.num);
+//	int row = g_pListCtrlPacketList->InsertItem(g_pListCtrlPacketList->GetItemCount(), strNum);
+
+	UINT mask = 0;
+	mask |= LVIF_PARAM;
+	mask |= LVIF_TEXT;
+	int row = g_pListCtrlPacketList->InsertItem(mask, g_pListCtrlPacketList->GetItemCount(), strNum, 0, 0, 0, (LPARAM)&(pkt.num));
+
 	/* 打印时间 */
 	CTime pktArrivalTime( (time_t)(pkt.header->ts.tv_sec) ) ;
 	CString strPktArrivalTime = pktArrivalTime.Format("%Y/%m/%d %H:%M:%S");
-	//g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strPktArrivalTime);
 	g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strPktArrivalTime);
 
 	/* 打印协议 */	
 	if (!pkt.protocol.IsEmpty())
 	{
-		//g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, pkt.protocol);
 		g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, pkt.protocol);
 	
 	}
 	else
 	{
-		//++g_listctrlPacketListCols;
 		++listctrlPacketListCols;
 	}
 
 	/* 打印长度 */
 	CString strCaplen;
 	strCaplen.Format("%d", pkt.header->caplen);
-	//g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strCaplen);
 	g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strCaplen);
 
 	/* 打印源目MAC地址 */
@@ -580,15 +597,11 @@ int printListCtrlPacketList(const Packet &pkt)
 		CString strSrcMAC = MACAddr2CString(pkt.ethh->srcaddr);
 		CString strDstMAC = MACAddr2CString(pkt.ethh->dstaddr);
 
-	/*	g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strSrcMAC);
-		g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strDstMAC);*/
-
 		g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strSrcMAC);
 		g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strDstMAC);
 	}
 	else
 	{
-		//g_listctrlPacketListCols += 2;
 		listctrlPacketListCols += 2;
 	}
 
@@ -597,9 +610,6 @@ int printListCtrlPacketList(const Packet &pkt)
 	{
 		CString strSrcIP = IPAddr2CString(pkt.iph->srcaddr);
 		CString strDstIP = IPAddr2CString(pkt.iph->dstaddr);
-
-		//g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strSrcIP);
-		//g_pListCtrlPacketList->SetItemText(g_listctrlPacketListRows, ++g_listctrlPacketListCols, strDstIP);
 
 		g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strSrcIP);
 		g_pListCtrlPacketList->SetItemText(row, ++listctrlPacketListCols, strDstIP);
@@ -625,10 +635,17 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList)
 	{
 		return -1;
 	}
+	//for (int i = 0; i < packetLinkList.GetCount(); ++i)
+	//{
+	//	POSITION pos = packetLinkList.FindIndex(i);
+	//	printListCtrlPacketList(g_packetLinkList.GetAt(pos));
+	//}
+
+	POSITION pos = packetLinkList.GetHeadPosition();
+	/*while (pos != NULL)*/
 	for (int i = 0; i < packetLinkList.GetCount(); ++i)
 	{
-		POSITION pos = packetLinkList.FindIndex(i);
-		printListCtrlPacketList(g_packetLinkList.GetAt(pos));
+		printListCtrlPacketList(g_packetLinkList.GetNext(pos));
 	}
 	return 0;
 }
@@ -646,10 +663,24 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const C
 		return -1;
 	}
 		
+	//for (int i = 0; i < packetLinkList.GetCount(); ++i)
+	//{
+		//POSITION pos = packetLinkList.FindIndex(i);
+		//if (pos < packetLinkList.GetHeadPosition() && pos > packetLinkList.GetTailPosition())
+		//{
+		//	return -1;
+		//}
+		//Packet pkt = packetLinkList.GetAt(pos);
+		//if (pkt.protocol == filter)
+		//{
+		//	printListCtrlPacketList(pkt);
+		//}
+	//}
+	POSITION pos = packetLinkList.GetHeadPosition();
+	//while (pos != NULL)
 	for (int i = 0; i < packetLinkList.GetCount(); ++i)
 	{
-		POSITION pos = packetLinkList.FindIndex(i);
-		Packet pkt = packetLinkList.GetAt(pos);
+		const Packet &pkt = packetLinkList.GetNext(pos);
 		if (pkt.protocol == filter)
 		{
 			printListCtrlPacketList(pkt);
@@ -733,7 +764,7 @@ int printEditCtrlPacketData(const Packet & pkt)
 *	@param	pkt	数据包
 *	@return	0 打印成功	-1 打印失败
 */
-int printTreeCtrlPacketInfo(const Packet &pkt, int pktIndex)
+int printTreeCtrlPacketInfo(const Packet &pkt)
 {
 	g_pTreeCtrlPacketInfo->DeleteAllItems();
 
@@ -743,7 +774,7 @@ int printTreeCtrlPacketInfo(const Packet &pkt, int pktIndex)
 	CTime pktArrivalTime((time_t)(pkt.header->ts.tv_sec));
 	CString strPktArrivalTime = pktArrivalTime.Format("%Y/%m/%d %H:%M:%S");
 
-	strText.Format("第%d个数据包（%s, 共 %hu 字节, 捕获 %hu 字节）", pktIndex + 1, strPktArrivalTime, pkt.header->len, pkt.header->caplen);
+	strText.Format("第%d个数据包（%s, 共 %hu 字节, 捕获 %hu 字节）",  pkt.num, strPktArrivalTime, pkt.header->len, pkt.header->caplen);
 
 	HTREEITEM rootNode = g_pTreeCtrlPacketInfo->InsertItem(strText, TVI_ROOT);
 	if (pkt.ethh != NULL)
@@ -1222,7 +1253,7 @@ int printUDP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 
 	if (pkt.dnsh != NULL)
 	{
-		printDNS2TreeCtrl(pkt, parentNode);
+		//printDNS2TreeCtrl(pkt, parentNode);
 	}
 	else if (pkt.dhcph != NULL)
 	{
@@ -2199,11 +2230,15 @@ void CSnifferUIDlg::OnClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 	{
 		return;
 	}
-
-	POSITION pos = g_packetLinkList.FindIndex(selRow);
+	CString pktNum = g_pListCtrlPacketList->GetItemText(selRow, 0);
+	POSITION pos = g_packetLinkList.FindIndex(_ttoi(pktNum)-1);
+	if (pos < g_packetLinkList.GetHeadPosition() || pos > g_packetLinkList.GetTailPosition()) 
+	{
+		return;
+	}
 	Packet &pkt = g_packetLinkList.GetAt(pos);
 
-	printTreeCtrlPacketInfo(pkt, selRow);
+	printTreeCtrlPacketInfo(pkt);
 	printEditCtrlPacketData(pkt);
 }
 
@@ -2228,53 +2263,87 @@ void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMLVCUSTOMDRAW pNMCD = (LPNMLVCUSTOMDRAW)pNMHDR;
 	*pResult = 0;
-	if (CDDS_PREPAINT == pNMCD->nmcd.dwDrawStage)
+
+	if (CDDS_PREPAINT == pNMCD->nmcd.dwDrawStage)	
 	{
 		*pResult = CDRF_NOTIFYITEMDRAW;
 	}
-	else if(CDDS_ITEMPREPAINT == pNMCD->nmcd.dwDrawStage) 
+	else if(CDDS_ITEMPREPAINT == pNMCD->nmcd.dwDrawStage) // 一个Item(一行)被绘画前
 	{
-
 		COLORREF itemColor;
 
-		POSITION pos = g_packetLinkList.FindIndex(pNMCD->nmcd.dwItemSpec);
+		//int curItemIndex = pNMCD->nmcd.dwItemSpec;
+
+		u_short pktNum = *(u_short*)(pNMCD->nmcd.lItemlParam);
+		//CString strPktNum = *(CString*)(pNMCD->nmcd.lItemlParam);
+		//int pktNum = _ttoi(strPktNum);
+
+		//CString strDebug;
+		//strDebug.Format("%u", pktNum);
+		//AfxMessageBox(strDebug);
+		//CString strDebug;
+		//strDebug.Format("%u", pktNum);
+		//AfxMessageBox(strDebug);
+
+		if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
+		{
+			CString strDebug;
+			strDebug.Format("pktNum: %u out of range", pktNum);
+			AfxMessageBox(strDebug);
+
+			*pResult = CDRF_DODEFAULT;
+			return;
+		}
+		POSITION pos = g_packetLinkList.FindIndex(pktNum-1);
+		//if (pos < g_packetLinkList.GetHeadPosition() || pos > g_packetLinkList.GetTailPosition())
+		//{
+		//	CString strDebug;
+		//	strDebug = "pos out of range";
+		//	AfxMessageBox(strDebug);
+
+		//	*pResult = CDRF_DODEFAULT;
+		//	return;
+		//}
+
 		Packet &pkt = g_packetLinkList.GetAt(pos);
 
-		if (pkt.protocol == "ARP")
+		if (!pkt.isEmpty())
 		{
-			itemColor = RGB(255, 182, 193);	// 红色
-		}
-		else if (pkt.protocol == "ICMP")	
-		{
-			itemColor = RGB(186, 85, 211);	// 紫色
-		}
-		else if (pkt.protocol == "TCP")
-		{
-			itemColor = RGB(144, 238, 144);	// 绿色
-		}
-		else if (pkt.protocol == "UDP")
-		{
-			itemColor = RGB(100, 149, 237);	// 蓝色
+			if (pkt.protocol == "ARP")
+			{
+				itemColor = RGB(255, 182, 193);	// 红色
+			}
+			else if (pkt.protocol == "ICMP")
+			{
+				itemColor = RGB(186, 85, 211);	// 紫色
+			}
+			else if (pkt.protocol == "TCP")
+			{
+				itemColor = RGB(144, 238, 144);	// 绿色
+			}
+			else if (pkt.protocol == "UDP")
+			{
+				itemColor = RGB(100, 149, 237);	// 蓝色
 
-		}
-		else if (pkt.protocol == "DNS")
-		{
-			itemColor = RGB(135, 206, 250);	// 浅蓝色
-		}
-		else if (pkt.protocol == "DHCP")
-		{
-			itemColor = RGB(189, 254, 76);	// 淡黄色
-		}
-		else if (pkt.protocol == "HTTP")
-		{
-			itemColor = RGB(238, 232, 180);	// 黄色
-		}
-		else
-		{
-			itemColor = RGB(211, 211, 211);	// 灰色
-		}
-
-		pNMCD->clrTextBk = itemColor;
+			}
+			else if (pkt.protocol == "DNS")
+			{
+				itemColor = RGB(135, 206, 250);	// 浅蓝色
+			}
+			else if (pkt.protocol == "DHCP")
+			{
+				itemColor = RGB(189, 254, 76);	// 淡黄色
+			}
+			else if (pkt.protocol == "HTTP")
+			{
+				itemColor = RGB(238, 232, 180);	// 黄色
+			}
+			else
+			{
+				itemColor = RGB(211, 211, 211);	// 灰色
+			}
+			pNMCD->clrTextBk = itemColor;
+		}		
 		*pResult = CDRF_DODEFAULT;
 	}
 }

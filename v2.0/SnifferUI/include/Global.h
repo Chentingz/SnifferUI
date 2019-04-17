@@ -61,7 +61,7 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const C
 
 int	printEditCtrlPacketData(const Packet &pkt);
 
-int printTreeCtrlPacketInfo(const Packet &pkt, int pktIndex);
+int printTreeCtrlPacketInfo(const Packet &pkt);
 int printEthernet2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
 int	printIP2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
 int	printARP2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
