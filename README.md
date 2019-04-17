@@ -1,17 +1,20 @@
 # SnifferUI
-基于MFC和Winpcap库开发的网络抓包软件
+基于MFC和Winpcap库开发的网络抓包软件  
+开发环境：Win7 + Visual Studio 2015
 
 ## 功能：
-* 支持对Ethernet、ARP、IPv4、ICMP、UDP、TCP、DNS、HTTP、DHCP的解析。
-* 其中ICMP只支持解析类型为3、4、5、11、8、0的报文，DNS只支持解析类型A、NS、CNAME、PTR的报文，DHCP只能解析选项0、1、3、6、12、50、51、53、54、60、61、255。 
+* 支持对Ethernet、ARP、IPv4、ICMP、UDP、TCP、DNS、HTTP、DHCP的解析
+* ICMP只支持解析类型为3、4、5、11、8、0的报文
+* DNS只支持解析类型A、NS、CNAME、PTR的报文
+* DHCP只能解析选项0、1、3、6、12、50、51、53、54、60、61、255
 
 ## ToDoList：
-* v2.0中DHCP,DNS,HTTP解析的实现
+* v2.0中~~DHCP~~,DNS,~~HTTP~~解析的实现
 * 根据协议名过滤数据包
 * 数据包保存为.pcap格式文件
 
 ## Bug：
-* 过滤后原来位置的底色保持不变
+* ~~过滤后原来位置的底色保持不变~~
 * DNS协议无法正确解析回答、授权回答、附加信息区域
 * 数据包16进制字节流格式不对齐
 
