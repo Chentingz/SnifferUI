@@ -288,7 +288,7 @@ void CSnifferUIDlg::OnClickedStop()
 
 	g_pListCtrlPacketList->DeleteAllItems();
 	g_pTreeCtrlPacketInfo->DeleteAllItems();
-	g_pEditCtrlPacketData->Clear();
+	g_pEditCtrlPacketData->SetWindowTextA("");
 
 	g_listctrlPacketListRows = -1;
 	g_listctrlPacketListCols = 0;
@@ -690,7 +690,7 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const C
 }
 
 /**
-*	@brief 打印数据包数据到编辑框
+*	@brief 打印数据包数据到编辑框（16进制数据区）
 *	@param	pkt	数据包
 *	@return 0 打印成功	-1 打印失败
 */
@@ -700,13 +700,14 @@ int printEditCtrlPacketData(const Packet & pkt)
 	{
 		return -1;
 	}
+
 	CString strPacketData, strTmp;
 	u_char* pHexPacketData = pkt.pkt_data;
 	u_char* pASCIIPacketData = pkt.pkt_data;
-	for (int i = 0,  count16=1, offset = 0; i < pkt.header->caplen && pHexPacketData != NULL; ++i, ++count16)
+	for (int byteCount = 0,  byteCount16=1, offset = 0; byteCount < pkt.header->caplen && pHexPacketData != NULL; ++byteCount, ++byteCount16)
 	{
 		// 打印行首偏移量
-		if (i % 16 == 0)
+		if (byteCount % 16 == 0)
 		{
 			strTmp.Format("%04X:", offset);
 			strPacketData += strTmp + " ";
@@ -718,41 +719,49 @@ int printEditCtrlPacketData(const Packet & pkt)
 		++pHexPacketData;
 
 		// 每8个字节数据打印一个制表符
-		if (count16 == 8)
+		if (byteCount16 == 8)
 		{
 			strPacketData += "\t";
+			//strPacketData += "#";
 		}
 
 		// 每16个字节数据打印ASCII字符数据，只打印字母数字
-		if (count16 == 16)
+		if (byteCount16 == 16)
 		{
 			strPacketData += " ";
-			for (int j=0; j < 16; ++j, ++pASCIIPacketData)
+			for (int charCount=0; charCount < 16; ++charCount, ++pASCIIPacketData)
 			{
 				strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
 				strPacketData += strTmp;
 			}
 			strPacketData += "\r\n";
 			offset += 16;
-			count16 = 0;
+			byteCount16 = 0;
 		}
 	}
-	// 打印剩余ASCII字节
-	for (int j = 0, count16= (pkt.header->caplen % 16); j < 16 - (pkt.header->caplen % 16); ++j, ++count16)
+	// 只有数据包总长度不是16字节对齐时，才打印剩余的ASCII字符
+	if (pkt.header->caplen % 16 != 0)
 	{
-		strPacketData += "   ";
-		if (count16 == 8)
+		//空格填充，保证字节流16字节对齐
+		for (int charCount = 0, count16 = (pkt.header->caplen % 16) + 1; charCount < 16 - (pkt.header->caplen % 16); ++charCount, ++count16)
 		{
-			strPacketData += "\t";
+			strPacketData += "  ";
+			strPacketData += " ";
+			if (count16 == 8)
+			{
+				strPacketData += "\t";
+				//strPacketData += "#";
+			}
 		}
+		strPacketData += " ";
+		// 打印剩余的ASCII字符
+		for (int j = 0; j < (pkt.header->caplen % 16); ++j, ++pASCIIPacketData)
+		{
+			strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
+			strPacketData += strTmp;
+		}
+		strPacketData += "\r\n";
 	}
-	strPacketData += " ";
-	for (int j = 0; j < (pkt.header->caplen % 16); ++j, ++pASCIIPacketData)
-	{
-		strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
-		strPacketData += strTmp;
-	}
-	strPacketData += "\r\n";
 	
 	g_pEditCtrlPacketData->SetWindowTextA(strPacketData);
 
@@ -766,6 +775,10 @@ int printEditCtrlPacketData(const Packet & pkt)
 */
 int printTreeCtrlPacketInfo(const Packet &pkt)
 {
+	if (pkt.isEmpty())
+	{
+		return -1;
+	}
 	g_pTreeCtrlPacketInfo->DeleteAllItems();
 
 	/* 建立编号结点 */
@@ -2218,7 +2231,7 @@ CString IPAddr2CString(const IP_Address &addr)
 }
 
 /**
-*	@brief	点击列表，打印数据包首部解析结果到树形控件 
+*	@brief	点击列表，打印数据包首部解析结果到树形控件 ,以及数据包字节流到编辑控件
 *	@param	
 *	@return	-
 */
