@@ -461,7 +461,22 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 	g_packetLinkList.AddTail(pkt);
 	Packet &pkt1 = g_packetLinkList.GetTail();
 	// TODO:检查过滤器是否启动，若启动了，则不打印最新捕获的数据包
-	printListCtrlPacketList(pkt1);
+	int selIndexOfFilter = g_pComboBoxlFilterInput->GetCurSel();
+	if (selIndexOfFilter > 0 && selIndexOfFilter != CB_ERR)
+	{
+		CString strFilter;
+		g_pComboBoxlFilterInput->GetLBText(selIndexOfFilter, strFilter);
+		if (strFilter == pkt1.protocol)
+		{
+			printListCtrlPacketList(pkt1);
+		}
+	}
+	else
+	{
+		printListCtrlPacketList(pkt1);
+	}
+	
+	
 	
 	//fclose(save_file);
 }
