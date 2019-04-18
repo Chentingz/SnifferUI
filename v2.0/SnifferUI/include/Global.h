@@ -24,7 +24,7 @@ CComboBox		*g_pComboBoxlFilterInput;
 /* 网卡信息 */
 pcap_if_t *g_pAllDevs,*g_pDev;
 
-/* pcap抓包用到的变量 */
+/* pcap中已打开的捕捉实例的描述符 */
 pcap_t *g_pAdhandle;
 
 /* 全局变量errbuf，存放错误信息 */

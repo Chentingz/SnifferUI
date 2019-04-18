@@ -253,6 +253,7 @@ void CSnifferUIDlg::OnClickedStart()
 		g_pBtnStop->EnableWindow(TRUE);
 		g_pComboBoxDevList->EnableWindow(FALSE);
 		myWinThread = AfxBeginThread(capture_thread, NULL, 0, NULL, 0, NULL);
+		//myWinThread->m_bAutoDelete = false;
 	}
 }
 
@@ -269,7 +270,12 @@ void CSnifferUIDlg::OnClickedPause()
 		g_pBtnPause->EnableWindow(FALSE);
 		g_pBtnStop->EnableWindow(TRUE);
 		g_pComboBoxDevList->EnableWindow(TRUE);
-		pcap_breakloop(g_pAdhandle);
+		if (g_pAdhandle != NULL)
+		{
+			pcap_breakloop(g_pAdhandle);
+		}
+
+		myWinThread = NULL;
 	}
 }
 
@@ -284,21 +290,29 @@ void CSnifferUIDlg::OnClickedStop()
 	g_pBtnPause->EnableWindow(FALSE);
 	g_pBtnStop->EnableWindow(FALSE);
 	g_pComboBoxDevList->EnableWindow(TRUE);
-	pcap_breakloop(g_pAdhandle);
+	if (g_pAdhandle != NULL)
+	{
+		pcap_breakloop(g_pAdhandle);
+	}
 
 	g_pListCtrlPacketList->DeleteAllItems();
 	g_pTreeCtrlPacketInfo->DeleteAllItems();
 	g_pEditCtrlPacketData->SetWindowTextA("");
 
-	g_listctrlPacketListRows = -1;
-	g_listctrlPacketListCols = 0;
-	g_listctrlPacketListCount = 0;
+	//g_listctrlPacketListRows = -1;
+	//g_listctrlPacketListCols = 0;
+	//g_listctrlPacketListCount = 0;
 
 	// TODO 打断点看是否清除链表
 	if (!g_packetLinkList.IsEmpty())
 	{
 		g_packetLinkList.RemoveAll();
+		//CString strDebug;
+		//strDebug = "removeAll finish!";
+		//AfxMessageBox(strDebug);
 	}
+	myWinThread = NULL;
+	g_packetCaptureSum = 0;
 }
 
 /**
@@ -320,14 +334,6 @@ bool isFilterInputInFilterList(CString filterInput)
 	filterList.AddTail("DHCP");
 	filterList.AddTail("HTTP");
 
-	//for (int i = 0; i < filterList.GetCount(); ++i)
-	//{
-	//	POSITION pos = filterList.FindIndex(i);
-	//	if (filterInput == filterList.GetAt(pos))
-	//	{
-	//		return true;
-	//	}
-	//}
 	POSITION pos = filterList.GetHeadPosition();
 	for(int i = 0; i < filterList.GetCount(); ++i)
 	{
@@ -431,9 +437,23 @@ UINT capture_thread(LPVOID pParam)
 	*/
 
 	/* 开始捕获数据包 */
-	pcap_loop(g_pAdhandle, -1,	packet_handler, (unsigned char *)dumpfile);
-	
-	return 0;
+	pcap_loop(g_pAdhandle, -1, packet_handler, (unsigned char *)dumpfile);
+	pcap_close(g_pAdhandle);
+	g_pAdhandle = NULL;
+	//int loopResult = pcap_loop(g_pAdhandle, -1, packet_handler, (unsigned char *)dumpfile);
+	//if (loopResult > 0 || loopResult == -2)
+	//{
+	//	return 0;
+	//}
+	//else
+	//{
+	//	//CString strDebug;
+	//	//strDebug = "pcap_loop return error!";
+	//	//AfxMessageBox(strDebug);
+	//	printf("pcap_loop return error");
+	//	return -1;
+	//}
+		
 }
 
 /**
@@ -460,7 +480,7 @@ void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_
 
 	g_packetLinkList.AddTail(pkt);
 	Packet &pkt1 = g_packetLinkList.GetTail();
-	// TODO:检查过滤器是否启动，若启动了，则不打印最新捕获的数据包
+	/* 检查过滤器是否启动，若启动了，则不打印最新捕获的数据包 */
 	int selIndexOfFilter = g_pComboBoxlFilterInput->GetCurSel();
 	if (selIndexOfFilter > 0 && selIndexOfFilter != CB_ERR)
 	{
@@ -526,12 +546,6 @@ void initialComboBoxFilterList()
 	g_pComboBoxlFilterInput->AddString("选择过滤器（可选）");
 	g_pComboBoxlFilterInput->SetCurSel(0);
 
-	//for (int i = 0; i < filterList.GetCount(); ++i)
-	//{
-	//	POSITION pos = filterList.FindIndex(i);
-	//	g_pComboBoxlFilterInput->AddString(filterList.GetAt(pos));
-
-	//}
 	POSITION pos = filterList.GetHeadPosition();
 	for(int i = 0; i < filterList.GetCount(); ++i)
 	{
@@ -583,7 +597,7 @@ int printListCtrlPacketList(const Packet &pkt)
 	UINT mask = 0;
 	mask |= LVIF_PARAM;
 	mask |= LVIF_TEXT;
-	int row = g_pListCtrlPacketList->InsertItem(mask, g_pListCtrlPacketList->GetItemCount(), strNum, 0, 0, 0, (LPARAM)&(pkt.num));
+	int row = g_pListCtrlPacketList->InsertItem(mask, g_pListCtrlPacketList->GetItemCount(), strNum, 0, 0, 0, (LPARAM)&(pkt.protocol));
 
 	/* 打印时间 */
 	CTime pktArrivalTime( (time_t)(pkt.header->ts.tv_sec) ) ;
@@ -678,21 +692,7 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const C
 		return -1;
 	}
 		
-	//for (int i = 0; i < packetLinkList.GetCount(); ++i)
-	//{
-		//POSITION pos = packetLinkList.FindIndex(i);
-		//if (pos < packetLinkList.GetHeadPosition() && pos > packetLinkList.GetTailPosition())
-		//{
-		//	return -1;
-		//}
-		//Packet pkt = packetLinkList.GetAt(pos);
-		//if (pkt.protocol == filter)
-		//{
-		//	printListCtrlPacketList(pkt);
-		//}
-	//}
 	POSITION pos = packetLinkList.GetHeadPosition();
-	//while (pos != NULL)
 	for (int i = 0; i < packetLinkList.GetCount(); ++i)
 	{
 		const Packet &pkt = packetLinkList.GetNext(pos);
@@ -705,7 +705,7 @@ int printListCtrlPacketList(const CList<Packet, Packet> &packetLinkList, const C
 }
 
 /**
-*	@brief 打印数据包数据到编辑框（16进制数据区）
+*	@brief 打印数据包字节流到编辑框（16进制数据区）
 *	@param	pkt	数据包
 *	@return 0 打印成功	-1 打印失败
 */
@@ -719,58 +719,68 @@ int printEditCtrlPacketData(const Packet & pkt)
 	CString strPacketData, strTmp;
 	u_char* pHexPacketData = pkt.pkt_data;
 	u_char* pASCIIPacketData = pkt.pkt_data;
-	for (int byteCount = 0,  byteCount16=1, offset = 0; byteCount < pkt.header->caplen && pHexPacketData != NULL; ++byteCount, ++byteCount16)
+	for (int byteCount = 0,  byteCount16=0, offset = 0; byteCount < pkt.header->caplen && pHexPacketData != NULL; ++byteCount)
 	{
-		// 打印行首偏移量
+		/* 若当前字节是行首，打印行首偏移量 */
 		if (byteCount % 16 == 0)
 		{
 			strTmp.Format("%04X:", offset);
 			strPacketData += strTmp + " ";
 		}
 
-		// 打印16进制数据
+		/* 打印16进制字节 */
 		strTmp.Format("%02X", *pHexPacketData);
 		strPacketData += strTmp + " ";
 		++pHexPacketData;
-
-		// 每8个字节数据打印一个制表符
-		if (byteCount16 == 8)
+		++byteCount16;
+		
+		switch (byteCount16)
 		{
+		case 8:
+		{
+			/* 每读取8个字节打印一个制表符 */
 			strPacketData += "\t";
 			//strPacketData += "#";
 		}
-
-		// 每16个字节数据打印ASCII字符数据，只打印字母数字
-		if (byteCount16 == 16)
+		break;
+		case 16:
 		{
-			strPacketData += " ";
-			for (int charCount=0; charCount < 16; ++charCount, ++pASCIIPacketData)
+			/* 每读取16个字节打印对应字节的ASCII字符，只打印字母数字 */
+			if (byteCount16 == 16)
 			{
-				strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
-				strPacketData += strTmp;
+				strPacketData += " ";
+				for (int charCount = 0; charCount < 16; ++charCount, ++pASCIIPacketData)
+				{
+					strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
+					strPacketData += strTmp;
+				}
+				strPacketData += "\r\n";
+				offset += 16;
+				byteCount16 = 0;
 			}
-			strPacketData += "\r\n";
-			offset += 16;
-			byteCount16 = 0;
+		}
+		break;
+		default:break;
 		}
 	}
-	// 只有数据包总长度不是16字节对齐时，才打印剩余的ASCII字符
+	/* 若数据包总长度不是16字节对齐时，打印最后一行字节对应的ASCII字符 */
 	if (pkt.header->caplen % 16 != 0)
 	{
-		//空格填充，保证字节流16字节对齐
-		for (int charCount = 0, count16 = (pkt.header->caplen % 16) + 1; charCount < 16 - (pkt.header->caplen % 16); ++charCount, ++count16)
+		/* 空格填充，保证字节流16字节对齐 */
+		for (int spaceCount = 0, byteCount16 = (pkt.header->caplen % 16); spaceCount < 16 - (pkt.header->caplen % 16); ++spaceCount)
 		{
 			strPacketData += "  ";
 			strPacketData += " ";
-			if (count16 == 8)
+			++byteCount16;
+			if (byteCount16 == 8)
 			{
 				strPacketData += "\t";
 				//strPacketData += "#";
 			}
 		}
 		strPacketData += " ";
-		// 打印剩余的ASCII字符
-		for (int j = 0; j < (pkt.header->caplen % 16); ++j, ++pASCIIPacketData)
+		/* 打印最后一行字节对应的ASCII字符 */
+		for (int charCount = 0; charCount < (pkt.header->caplen % 16); ++charCount, ++pASCIIPacketData)
 		{
 			strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
 			strPacketData += strTmp;
@@ -2302,27 +2312,25 @@ void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
 
 		//int curItemIndex = pNMCD->nmcd.dwItemSpec;
 
-		u_short pktNum = *(u_short*)(pNMCD->nmcd.lItemlParam);
-		//CString strPktNum = *(CString*)(pNMCD->nmcd.lItemlParam);
-		//int pktNum = _ttoi(strPktNum);
+		//u_short pktNum = *(u_short*)(pNMCD->nmcd.lItemlParam);
+		CString *pStrPktProtocol = (CString*)(pNMCD->nmcd.lItemlParam);	// 在printListCtrlPacketList(pkt)里将数据包的protocol字段传递过来
+
 
 		//CString strDebug;
 		//strDebug.Format("%u", pktNum);
 		//AfxMessageBox(strDebug);
-		//CString strDebug;
-		//strDebug.Format("%u", pktNum);
-		//AfxMessageBox(strDebug);
 
-		if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
-		{
-			CString strDebug;
-			strDebug.Format("pktNum: %u out of range", pktNum);
-			AfxMessageBox(strDebug);
+		//if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
+		//{
+		//	CString strDebug;
+		//	strDebug.Format("pktNum: %u out of range", pktNum);
+		//	AfxMessageBox(strDebug);
 
-			*pResult = CDRF_DODEFAULT;
-			return;
-		}
-		POSITION pos = g_packetLinkList.FindIndex(pktNum-1);
+		//	*pResult = CDRF_DODEFAULT;
+		//	return;
+		//}
+
+		//POSITION pos = g_packetLinkList.FindIndex(pktNum-1);
 		//if (pos < g_packetLinkList.GetHeadPosition() || pos > g_packetLinkList.GetTailPosition())
 		//{
 		//	CString strDebug;
@@ -2333,36 +2341,74 @@ void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
 		//	return;
 		//}
 
-		Packet &pkt = g_packetLinkList.GetAt(pos);
+		//Packet &pkt = g_packetLinkList.GetAt(pos);
 
-		if (!pkt.isEmpty())
+		//if (!pkt.isEmpty())
+		//{
+		//	if (pkt.protocol == "ARP")
+		//	{
+		//		itemColor = RGB(255, 182, 193);	// 红色
+		//	}
+		//	else if (pkt.protocol == "ICMP")
+		//	{
+		//		itemColor = RGB(186, 85, 211);	// 紫色
+		//	}
+		//	else if (pkt.protocol == "TCP")
+		//	{
+		//		itemColor = RGB(144, 238, 144);	// 绿色
+		//	}
+		//	else if (pkt.protocol == "UDP")
+		//	{
+		//		itemColor = RGB(100, 149, 237);	// 蓝色
+
+		//	}
+		//	else if (pkt.protocol == "DNS")
+		//	{
+		//		itemColor = RGB(135, 206, 250);	// 浅蓝色
+		//	}
+		//	else if (pkt.protocol == "DHCP")
+		//	{
+		//		itemColor = RGB(189, 254, 76);	// 淡黄色
+		//	}
+		//	else if (pkt.protocol == "HTTP")
+		//	{
+		//		itemColor = RGB(238, 232, 180);	// 黄色
+		//	}
+		//	else
+		//	{
+		//		itemColor = RGB(211, 211, 211);	// 灰色
+		//	}
+		//	pNMCD->clrTextBk = itemColor;
+		//}		
+
+		if (!pStrPktProtocol->IsEmpty())
 		{
-			if (pkt.protocol == "ARP")
+			if (*pStrPktProtocol == "ARP")
 			{
 				itemColor = RGB(255, 182, 193);	// 红色
 			}
-			else if (pkt.protocol == "ICMP")
+			else if (*pStrPktProtocol == "ICMP")
 			{
 				itemColor = RGB(186, 85, 211);	// 紫色
 			}
-			else if (pkt.protocol == "TCP")
+			else if (*pStrPktProtocol == "TCP")
 			{
 				itemColor = RGB(144, 238, 144);	// 绿色
 			}
-			else if (pkt.protocol == "UDP")
+			else if (*pStrPktProtocol == "UDP")
 			{
 				itemColor = RGB(100, 149, 237);	// 蓝色
 
 			}
-			else if (pkt.protocol == "DNS")
+			else if (*pStrPktProtocol == "DNS")
 			{
 				itemColor = RGB(135, 206, 250);	// 浅蓝色
 			}
-			else if (pkt.protocol == "DHCP")
+			else if (*pStrPktProtocol == "DHCP")
 			{
 				itemColor = RGB(189, 254, 76);	// 淡黄色
 			}
-			else if (pkt.protocol == "HTTP")
+			else if (*pStrPktProtocol == "HTTP")
 			{
 				itemColor = RGB(238, 232, 180);	// 黄色
 			}
