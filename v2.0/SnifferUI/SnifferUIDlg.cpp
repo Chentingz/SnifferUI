@@ -118,6 +118,8 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 //	ON_NOTIFY(NM_KILLFOCUS, IDC_LIST1, &CSnifferUIDlg::OnKillfocusList1)
 //	ON_NOTIFY(NM_SETFOCUS, IDC_LIST1, &CSnifferUIDlg::OnSetfocusList1)
 ON_NOTIFY(LVN_KEYDOWN, IDC_LIST1, &CSnifferUIDlg::OnKeydownList1)
+ON_COMMAND(ID_32775, &CSnifferUIDlg::On32775)
+ON_COMMAND(ID_32776, &CSnifferUIDlg::On32776)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -156,6 +158,10 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
 	// TODO: Add extra initialization here
+	/* 菜单栏初始化 */
+	m_Menu.LoadMenu(IDR_MENU1);		
+	SetMenu(&m_Menu);
+		
 
 	/* 控件指针初始化 */
 	g_pBtnStart = &btnStart_;
@@ -189,6 +195,8 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	/* 过滤器列表初始化 */
 	initialComboBoxFilterList();
 
+	/* 堆文件初始化 */
+	g_dumpfile = NULL;
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -277,7 +285,7 @@ void CSnifferUIDlg::OnClickedPause()
 		g_pBtnStart->EnableWindow(TRUE);
 		g_pBtnPause->EnableWindow(FALSE);
 		g_pBtnStop->EnableWindow(TRUE);
-		g_pComboBoxDevList->EnableWindow(TRUE);
+		g_pComboBoxDevList->EnableWindow(FALSE);
 		if (g_pAdhandle != NULL)
 		{
 			pcap_breakloop(g_pAdhandle);
@@ -301,6 +309,8 @@ void CSnifferUIDlg::OnClickedStop()
 	if (g_pAdhandle != NULL)
 	{
 		pcap_breakloop(g_pAdhandle);
+		pcap_close(g_pAdhandle);
+		g_pAdhandle = NULL;
 	}
 
 	g_pListCtrlPacketList->DeleteAllItems();
@@ -423,45 +433,43 @@ UINT capture_thread(LPVOID pParam)
 		return -1;
 	}		
 	int count = 0, selDevIndex = selIndex - 1;
-    for(g_pDev = g_pAllDevs; count < selDevIndex; g_pDev = g_pDev->next, ++count);
-	if((g_pAdhandle = pcap_open_live(g_pDev->name,
-					65535,
-					 PCAP_OPENFLAG_PROMISCUOUS,
-					1000,
-					g_errbuf)) == NULL)
-	{ 
-		AfxMessageBox(_T("pcap_open_live错误!"), MB_OK);
+
+	// 捕捉实例描述符为空时，才打开网卡和堆文件
+	if (g_pAdhandle == NULL)
+	{
+		for (g_pDev = g_pAllDevs; count < selDevIndex; g_pDev = g_pDev->next, ++count);
+		if ((g_pAdhandle = pcap_open_live(g_pDev->name,
+			65535,
+			PCAP_OPENFLAG_PROMISCUOUS,
+			1000,
+			g_errbuf)) == NULL)
+		{
+			AfxMessageBox(_T("pcap_open_live错误!"), MB_OK);
+		}
+
+
+		/* 判断接口的链路层类型是否为以太网*/
+		if (pcap_datalink(g_pAdhandle) != DLT_EN10MB)
+			AfxMessageBox(_T("数据链路层不是以太网"), MB_OK);
+
+
+		/* 打开堆文件 */
+
+		CString savePath(".\\packets\\");
+		/* 获取当前时间 */
+		time_t tt = time(NULL);	// 这句返回的只是一个时间戳
+		localtime(&tt);
+		CTime currentTime(tt);
+
+		CString dumpFileName = savePath + currentTime.Format("%Y%m%d%H%M%S") + ".cap";
+
+		g_dumpfile = pcap_dump_open(g_pAdhandle, dumpFileName);
 	}
 
-	/* 判断接口的链路层类型是否为以太网*/
-	if( pcap_datalink(g_pAdhandle) != DLT_EN10MB)
-		AfxMessageBox(_T("数据链路层不是以太网"), MB_OK);
 
-	pcap_dumper_t *dumpfile = NULL;	
-	/* 打开堆文件
-	strcpy(filename, "pkt_cap");
-
-	dumpfile = pcap_dump_open(adhandle, filename);
-	*/
 
 	/* 开始捕获数据包 */
-	pcap_loop(g_pAdhandle, -1, packet_handler, (unsigned char *)dumpfile);
-	pcap_close(g_pAdhandle);
-	g_pAdhandle = NULL;
-	//int loopResult = pcap_loop(g_pAdhandle, -1, packet_handler, (unsigned char *)dumpfile);
-	//if (loopResult > 0 || loopResult == -2)
-	//{
-	//	return 0;
-	//}
-	//else
-	//{
-	//	//CString strDebug;
-	//	//strDebug = "pcap_loop return error!";
-	//	//AfxMessageBox(strDebug);
-	//	printf("pcap_loop return error");
-	//	return -1;
-	//}
-		
+	pcap_loop(g_pAdhandle, -1, packet_handler, (unsigned char *)g_dumpfile);	
 }
 
 /**
@@ -474,9 +482,8 @@ UINT capture_thread(LPVOID pParam)
 void packet_handler(u_char *dumpfile, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
 	/* 写入堆文件 */
-//	pcap_dump(dumpfile, header, pkt_data);
+	pcap_dump(dumpfile, header, pkt_data);
 	
-
 	/* 日志文件 
 	char *path = "E:\\Code\\Sniffer\\pkt_cap_log.txt";
 	FILE *save_file;
@@ -2595,3 +2602,23 @@ CString get0xC0PointerValue(const DNS_Header *pDNSHeader, const int offset)
 	
 }
 
+/**
+*	@brief	（菜单栏 - 文件 - 退出）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::On32775()
+{
+	exit(0);
+}
+
+/**
+*	@brief	（菜单栏 - 帮助 - 关于）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::On32776()
+{
+	CAboutDlg dlg;
+	dlg.DoModal();
+}

@@ -27,6 +27,9 @@ pcap_if_t *g_pAllDevs,*g_pDev;
 /* pcap中已打开的捕捉实例的描述符 */
 pcap_t *g_pAdhandle;
 
+/* 堆文件 */
+pcap_dumper_t *g_dumpfile;
+
 /* 全局变量errbuf，存放错误信息 */
 char g_errbuf[PCAP_ERRBUF_SIZE];
 

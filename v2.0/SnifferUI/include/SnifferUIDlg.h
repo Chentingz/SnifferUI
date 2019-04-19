@@ -43,6 +43,7 @@ public:
 
 // Implementation
 protected:
+	CMenu		m_Menu;
 	HICON		m_hIcon;
 	CWinThread *myWinThread;
 	int			m_nSelectedItemIndex;			// ListCtrl的选中行下标
@@ -64,6 +65,8 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void On32775();
+	afx_msg void On32776();
 };
 
 //{{AFX_INSERT_LOCATION}}

@@ -182,6 +182,7 @@
     <Image Include="res\btnStart.ico" />
     <Image Include="res\btnStop.ico" />
     <Image Include="res\SnifferUI.ico" />
+    <Image Include="res\toolbar1.bmp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram1.cd" />

@@ -196,6 +196,49 @@ IDR_MANIFEST            RT_MANIFEST             "res\\windows.manifest"
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Menu
+//
+
+IDR_MENU1 MENU
+BEGIN
+    POPUP "文件"
+    BEGIN
+        MENUITEM "打开",                          ID_32771
+        MENUITEM "关闭",                          ID_32772
+        MENUITEM SEPARATOR
+        MENUITEM "保存",                          ID_32773
+        MENUITEM "另存为",                         ID_32774
+        MENUITEM SEPARATOR
+        MENUITEM "退出",                          ID_32775
+    END
+    POPUP "帮助"
+    BEGIN
+        MENUITEM "关于",                          ID_32776
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDR_TOOLBAR1 TOOLBAR 16, 15
+BEGIN
+    BUTTON      ID_BUTTON32782
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_TOOLBAR1            BITMAP                  "res\\toolbar1.bmp"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
