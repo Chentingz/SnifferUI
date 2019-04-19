@@ -110,11 +110,13 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 	ON_BN_CLICKED(IDC_STOP, OnClickedStop)
 	ON_BN_CLICKED(IDC_FILTER, &CSnifferUIDlg::OnClickedFilter)
 	ON_BN_CLICKED(IDC_CLEAR, &CSnifferUIDlg::OnClickedClear)
-	ON_NOTIFY(NM_CLICK, IDC_LIST1, OnClickList1)
+	ON_NOTIFY(NM_CLICK, IDC_LIST1, OnClickedList1)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST1, &CSnifferUIDlg::OnCustomdrawList1)
 
 	//}}AFX_MSG_MAP
 
+//	ON_NOTIFY(NM_KILLFOCUS, IDC_LIST1, &CSnifferUIDlg::OnKillfocusList1)
+//	ON_NOTIFY(NM_SETFOCUS, IDC_LIST1, &CSnifferUIDlg::OnSetfocusList1)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -171,6 +173,11 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	//g_pBtnPause->SetIcon(LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDI_ICON2)));
 	//g_pBtnStop->SetIcon(LoadIcon(AfxGetApp()->m_hInstance, MAKEINTRESOURCE(IDI_ICON3)));
 
+	// 设置控件字体
+	//m_font.CreatePointFont(100, _T("Consolas"));
+	//g_pListCtrlPacketList->SetFont(&m_font);
+	//g_pTreeCtrlPacketInfo->SetFont(&m_font);
+	//g_pEditCtrlPacketData->SetFont(&m_font);
 
 	/* 列表控件初始化 */
 	initialListCtrlPacketList();
@@ -303,7 +310,7 @@ void CSnifferUIDlg::OnClickedStop()
 	//g_listctrlPacketListCols = 0;
 	//g_listctrlPacketListCount = 0;
 
-	// TODO 打断点看是否清除链表
+	// 打断点看是否清除链表
 	if (!g_packetLinkList.IsEmpty())
 	{
 		g_packetLinkList.RemoveAll();
@@ -2260,7 +2267,7 @@ CString IPAddr2CString(const IP_Address &addr)
 *	@param	
 *	@return	-
 */
-void CSnifferUIDlg::OnClickList1(NMHDR* pNMHDR, LRESULT* pResult)
+void CSnifferUIDlg::OnClickedList1(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	/* 获取选中行的行号 */
 	int	selRow = g_pListCtrlPacketList->GetSelectionMark();
@@ -2309,78 +2316,13 @@ void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
 	else if(CDDS_ITEMPREPAINT == pNMCD->nmcd.dwDrawStage) // 一个Item(一行)被绘画前
 	{
 		COLORREF itemColor;
-
-		//int curItemIndex = pNMCD->nmcd.dwItemSpec;
-
-		//u_short pktNum = *(u_short*)(pNMCD->nmcd.lItemlParam);
 		CString *pStrPktProtocol = (CString*)(pNMCD->nmcd.lItemlParam);	// 在printListCtrlPacketList(pkt)里将数据包的protocol字段传递过来
 
-
-		//CString strDebug;
-		//strDebug.Format("%u", pktNum);
-		//AfxMessageBox(strDebug);
-
-		//if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
+		///* 若该行被选中，则将其背景颜色调整为 */
+		//if (pNMCD->nmcd.uItemState & CDIS_SELECTED)
 		//{
-		//	CString strDebug;
-		//	strDebug.Format("pktNum: %u out of range", pktNum);
-		//	AfxMessageBox(strDebug);
-
-		//	*pResult = CDRF_DODEFAULT;
-		//	return;
+		//	pNMCD->clrTextBk = RGB(0, 0, 0);
 		//}
-
-		//POSITION pos = g_packetLinkList.FindIndex(pktNum-1);
-		//if (pos < g_packetLinkList.GetHeadPosition() || pos > g_packetLinkList.GetTailPosition())
-		//{
-		//	CString strDebug;
-		//	strDebug = "pos out of range";
-		//	AfxMessageBox(strDebug);
-
-		//	*pResult = CDRF_DODEFAULT;
-		//	return;
-		//}
-
-		//Packet &pkt = g_packetLinkList.GetAt(pos);
-
-		//if (!pkt.isEmpty())
-		//{
-		//	if (pkt.protocol == "ARP")
-		//	{
-		//		itemColor = RGB(255, 182, 193);	// 红色
-		//	}
-		//	else if (pkt.protocol == "ICMP")
-		//	{
-		//		itemColor = RGB(186, 85, 211);	// 紫色
-		//	}
-		//	else if (pkt.protocol == "TCP")
-		//	{
-		//		itemColor = RGB(144, 238, 144);	// 绿色
-		//	}
-		//	else if (pkt.protocol == "UDP")
-		//	{
-		//		itemColor = RGB(100, 149, 237);	// 蓝色
-
-		//	}
-		//	else if (pkt.protocol == "DNS")
-		//	{
-		//		itemColor = RGB(135, 206, 250);	// 浅蓝色
-		//	}
-		//	else if (pkt.protocol == "DHCP")
-		//	{
-		//		itemColor = RGB(189, 254, 76);	// 淡黄色
-		//	}
-		//	else if (pkt.protocol == "HTTP")
-		//	{
-		//		itemColor = RGB(238, 232, 180);	// 黄色
-		//	}
-		//	else
-		//	{
-		//		itemColor = RGB(211, 211, 211);	// 灰色
-		//	}
-		//	pNMCD->clrTextBk = itemColor;
-		//}		
-
 		if (!pStrPktProtocol->IsEmpty())
 		{
 			if (*pStrPktProtocol == "ARP")

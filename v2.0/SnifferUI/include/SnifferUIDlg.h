@@ -45,6 +45,8 @@ public:
 protected:
 	HICON		m_hIcon;
 	CWinThread *myWinThread;
+	int			m_nSelectedItemIndex;			// ListCtrl的选中行下标
+	CFont		m_font;							// ListCtrl的字体
 	// Generated message map functions
 	//{{AFX_MSG(CSnifferUIDlg)
 	virtual BOOL OnInitDialog();
@@ -56,10 +58,13 @@ protected:
 	afx_msg void OnClickedStop();
 	afx_msg void OnClickedFilter();
 	afx_msg void OnClickedClear();
-	afx_msg void OnClickList1(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnClickedList1(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+//	afx_msg void OnKillfocusList1(NMHDR *pNMHDR, LRESULT *pResult);
+//	afx_msg void OnSetfocusList1(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}
