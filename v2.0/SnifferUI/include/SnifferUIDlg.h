@@ -63,8 +63,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
-//	afx_msg void OnKillfocusList1(NMHDR *pNMHDR, LRESULT *pResult);
-//	afx_msg void OnSetfocusList1(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}

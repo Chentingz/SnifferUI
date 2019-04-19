@@ -117,6 +117,7 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 
 //	ON_NOTIFY(NM_KILLFOCUS, IDC_LIST1, &CSnifferUIDlg::OnKillfocusList1)
 //	ON_NOTIFY(NM_SETFOCUS, IDC_LIST1, &CSnifferUIDlg::OnSetfocusList1)
+ON_NOTIFY(LVN_KEYDOWN, IDC_LIST1, &CSnifferUIDlg::OnKeydownList1)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2270,17 +2271,14 @@ CString IPAddr2CString(const IP_Address &addr)
 void CSnifferUIDlg::OnClickedList1(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	/* 获取选中行的行号 */
-	int	selRow = g_pListCtrlPacketList->GetSelectionMark();
-	if (selRow == -1)
+	int selectedItemIndex = g_pListCtrlPacketList->GetSelectionMark();
+	CString strPktNum = g_pListCtrlPacketList->GetItemText(selectedItemIndex, 0);
+	int pktNum = _ttoi(strPktNum);
+	if (pktNum == -1)
 	{
 		return;
 	}
-	CString pktNum = g_pListCtrlPacketList->GetItemText(selRow, 0);
-	POSITION pos = g_packetLinkList.FindIndex(_ttoi(pktNum)-1);
-	if (pos < g_packetLinkList.GetHeadPosition() || pos > g_packetLinkList.GetTailPosition()) 
-	{
-		return;
-	}
+	POSITION pos = g_packetLinkList.FindIndex(pktNum - 1);
 	Packet &pkt = g_packetLinkList.GetAt(pos);
 
 	printTreeCtrlPacketInfo(pkt);
@@ -2363,6 +2361,61 @@ void CSnifferUIDlg::OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult)
 		*pResult = CDRF_DODEFAULT;
 	}
 }
+
+/**
+*	@brief	在数据包列表控件中，用方向键上、下控制当前选中行
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMLVKEYDOWN pLVKeyDow = reinterpret_cast<LPNMLVKEYDOWN>(pNMHDR);
+	bool selectedItemChangedFlag = false;
+	int selectedItemIndex = g_pListCtrlPacketList->GetSelectionMark();
+	/* 判断按下的键是否为方向键上或方向键下*/
+	switch (pLVKeyDow->wVKey)
+	{
+	case VK_UP:
+	{
+		if (selectedItemIndex > 0 && selectedItemIndex < g_pListCtrlPacketList->GetItemCount())
+		{
+			g_pListCtrlPacketList->SetSelectionMark(--selectedItemIndex );
+			selectedItemChangedFlag = true;
+		}
+	}
+	break;
+	case VK_DOWN:
+	{
+		if (selectedItemIndex >= 0 && selectedItemIndex < g_pListCtrlPacketList->GetItemCount() - 1)
+		{
+			g_pListCtrlPacketList->SetSelectionMark(++selectedItemIndex);
+			selectedItemChangedFlag = true;
+		}
+	}
+	break;
+	default:	break;
+	}
+
+	/* 选中行发送变化，打印数据包信息和字节流 */
+	if (selectedItemChangedFlag)
+	{
+		CString strPktNum = g_pListCtrlPacketList->GetItemText(selectedItemIndex, 0);
+		int pktNum = _ttoi(strPktNum);
+		if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
+		{
+			return;
+		}
+		POSITION pos = g_packetLinkList.FindIndex(pktNum - 1);
+		Packet &pkt = g_packetLinkList.GetAt(pos);
+
+		printTreeCtrlPacketInfo(pkt);
+		printEditCtrlPacketData(pkt);
+	}
+	
+	*pResult = 0;
+}
+
+
 
 /**
 *	@brief	将带有字节计数的域名name2转换成域名name1
