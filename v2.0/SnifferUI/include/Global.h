@@ -29,6 +29,7 @@ pcap_t *g_pAdhandle;
 
 /* 堆文件 */
 pcap_dumper_t *g_dumpfile;
+CString g_dumpFileName;
 
 /* 全局变量errbuf，存放错误信息 */
 char g_errbuf[PCAP_ERRBUF_SIZE];

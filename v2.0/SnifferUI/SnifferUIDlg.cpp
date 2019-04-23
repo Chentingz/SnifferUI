@@ -118,8 +118,9 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 //	ON_NOTIFY(NM_KILLFOCUS, IDC_LIST1, &CSnifferUIDlg::OnKillfocusList1)
 //	ON_NOTIFY(NM_SETFOCUS, IDC_LIST1, &CSnifferUIDlg::OnSetfocusList1)
 ON_NOTIFY(LVN_KEYDOWN, IDC_LIST1, &CSnifferUIDlg::OnKeydownList1)
-ON_COMMAND(ID_32775, &CSnifferUIDlg::On32775)
-ON_COMMAND(ID_32776, &CSnifferUIDlg::On32776)
+ON_COMMAND(ID_MENU_FILE_EXIT, &CSnifferUIDlg::OnClickedMenuFileExit)
+ON_COMMAND(ID_MENU_HELP_ABOUT, &CSnifferUIDlg::OnClickedMenuHelpAbout)
+ON_COMMAND(ID_MENU_FILE_SAVEAS, &CSnifferUIDlg::OnClickedMenuFileSaveAs)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -195,6 +196,14 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	/* 过滤器列表初始化 */
 	initialComboBoxFilterList();
 
+	/* 菜单项禁用 */
+	CMenu* pMenu = this->GetMenu();
+	if (pMenu)
+	{
+		pMenu->EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
+	}
+	
+
 	/* 堆文件初始化 */
 	g_dumpfile = NULL;
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -268,6 +277,7 @@ void CSnifferUIDlg::OnClickedStart()
 		g_pBtnPause->EnableWindow(TRUE);
 		g_pBtnStop->EnableWindow(TRUE);
 		g_pComboBoxDevList->EnableWindow(FALSE);
+		m_isCapturing = true;	// 设置抓包标志
 		myWinThread = AfxBeginThread(capture_thread, NULL, 0, NULL, 0, NULL);
 		//myWinThread->m_bAutoDelete = false;
 	}
@@ -282,10 +292,17 @@ void CSnifferUIDlg::OnClickedPause()
 {
 	if (g_pBtnStart->IsWindowEnabled() == false && g_pBtnPause->IsWindowEnabled() == true && g_pBtnStop->IsWindowEnabled() == true)
 	{
+		m_isCapturing = false;
 		g_pBtnStart->EnableWindow(TRUE);
 		g_pBtnPause->EnableWindow(FALSE);
 		g_pBtnStop->EnableWindow(TRUE);
 		g_pComboBoxDevList->EnableWindow(FALSE);
+
+		CMenu* pMenu = this->GetMenu();
+		if (pMenu)
+		{
+			pMenu->EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+		}
 		if (g_pAdhandle != NULL)
 		{
 			pcap_breakloop(g_pAdhandle);
@@ -302,14 +319,23 @@ void CSnifferUIDlg::OnClickedPause()
 */
 void CSnifferUIDlg::OnClickedStop() 
 {
+	m_isCapturing = false;
 	g_pBtnStart->EnableWindow(TRUE);
 	g_pBtnPause->EnableWindow(FALSE);
 	g_pBtnStop->EnableWindow(FALSE);
 	g_pComboBoxDevList->EnableWindow(TRUE);
+
+	CMenu* pMenu = this->GetMenu();
+	if (pMenu)
+	{
+		pMenu->EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+	}
 	if (g_pAdhandle != NULL)
 	{
 		pcap_breakloop(g_pAdhandle);
 		pcap_close(g_pAdhandle);
+		if(!g_dumpfile)
+			pcap_dump_close(g_dumpfile);
 		g_pAdhandle = NULL;
 	}
 
@@ -398,8 +424,10 @@ void CSnifferUIDlg::OnClickedFilter()
 	if (isFilterInputInFilterList(strFilter))
 	{
 		g_pListCtrlPacketList->DeleteAllItems();
-
+		g_pTreeCtrlPacketInfo->DeleteAllItems();
+		g_pEditCtrlPacketData->SetWindowTextA("");
 		printListCtrlPacketList(g_packetLinkList, strFilter);
+
 	}
 }
 
@@ -410,11 +438,11 @@ void CSnifferUIDlg::OnClickedFilter()
 */
 void CSnifferUIDlg::OnClickedClear()
 {
-	//if (g_pEditCtrlFilterInput->GetWindowTextLengthA() == 0)
-		//return;
-	if (g_pComboBoxlFilterInput->GetWindowTextLengthA() == 0)
+	if (g_pComboBoxlFilterInput->GetCurSel() == 0)
 		return;
 	g_pListCtrlPacketList->DeleteAllItems();
+	g_pTreeCtrlPacketInfo->DeleteAllItems();
+	g_pEditCtrlPacketData->SetWindowTextA("");
 	printListCtrlPacketList(g_packetLinkList);
 
 }
@@ -426,13 +454,13 @@ void CSnifferUIDlg::OnClickedClear()
 UINT capture_thread(LPVOID pParam)
 {
 	/* 获取并打开选中的网卡 */
-	int selIndex = g_pComboBoxDevList->GetCurSel();
-	if(selIndex == CB_ERR || selIndex == 0)
+	int selItemIndex = g_pComboBoxDevList->GetCurSel();
+	if(selItemIndex == CB_ERR || selItemIndex == 0)
 	{
 		AfxMessageBox(_T("请选择网卡"),MB_OK);
 		return -1;
 	}		
-	int count = 0, selDevIndex = selIndex - 1;
+	int count = 0, selDevIndex = selItemIndex - 1;
 
 	// 捕捉实例描述符为空时，才打开网卡和堆文件
 	if (g_pAdhandle == NULL)
@@ -454,16 +482,19 @@ UINT capture_thread(LPVOID pParam)
 
 
 		/* 打开堆文件 */
+		//char buf[1024];
+		//GetCurrentDirectory(sizeof(buf), buf);
+		CString tmpDumpFilePath(".\\tmp\\");
 
-		CString savePath(".\\packets\\");
 		/* 获取当前时间 */
 		time_t tt = time(NULL);	// 这句返回的只是一个时间戳
 		localtime(&tt);
 		CTime currentTime(tt);
 
-		CString dumpFileName = savePath + currentTime.Format("%Y%m%d%H%M%S") + ".cap";
+		g_dumpFileName = currentTime.Format("%Y%m%d%H%M%S") + "_tmp.pcap";
+		tmpDumpFilePath += g_dumpFileName;
 
-		g_dumpfile = pcap_dump_open(g_pAdhandle, dumpFileName);
+		g_dumpfile = pcap_dump_open(g_pAdhandle, tmpDumpFilePath);
 	}
 
 
@@ -2281,7 +2312,7 @@ void CSnifferUIDlg::OnClickedList1(NMHDR* pNMHDR, LRESULT* pResult)
 	int selectedItemIndex = g_pListCtrlPacketList->GetSelectionMark();
 	CString strPktNum = g_pListCtrlPacketList->GetItemText(selectedItemIndex, 0);
 	int pktNum = _ttoi(strPktNum);
-	if (pktNum == -1)
+	if (pktNum < 1 || pktNum > g_packetLinkList.GetCount())
 	{
 		return;
 	}
@@ -2607,7 +2638,7 @@ CString get0xC0PointerValue(const DNS_Header *pDNSHeader, const int offset)
 *	@param	-
 *	@return	-
 */
-void CSnifferUIDlg::On32775()
+void CSnifferUIDlg::OnClickedMenuFileExit()
 {
 	exit(0);
 }
@@ -2617,8 +2648,48 @@ void CSnifferUIDlg::On32775()
 *	@param	-
 *	@return	-
 */
-void CSnifferUIDlg::On32776()
+void CSnifferUIDlg::OnClickedMenuHelpAbout()
 {
 	CAboutDlg dlg;
 	dlg.DoModal();
+}
+
+/**
+*	@brief	将src文件的内容拷贝到dest文件
+*	@param	dest 目标文件	src 源文件
+*	@return	-
+*/
+void copyFile(CFile *dest, CFile *src)
+{
+	char buf[1024];
+	int  byteCount;
+
+	while ((byteCount = src->Read(buf, sizeof(buf))) > 0)
+		dest->Write(buf, byteCount);
+}
+
+
+/**
+*	@brief	（菜单栏 - 文件 - 另存为）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnClickedMenuFileSaveAs()
+{
+	CString strSaveAsFilePath = _T("");
+	CString strDumpFilePath = ".\\tmp\\" + g_dumpFileName;
+	CString strDefaultFileName = g_dumpFileName;
+	CFileDialog	dlgFile(FALSE, ".pcap", strDefaultFileName, OFN_HIDEREADONLY, _T("pcap文件 (*.pcap)|*.pcap|所有文件 (*.*)|*.*||"), NULL);
+
+	if (dlgFile.DoModal() == IDOK )
+	{
+		strSaveAsFilePath = dlgFile.GetPathName();
+ 
+		CFile saveAsFile(strSaveAsFilePath, CFile::modeCreate | CFile::modeWrite);
+		CFile dumpFile(strDumpFilePath, CFile::modeRead | CFile::shareDenyNone);
+		copyFile(&saveAsFile, &dumpFile);
+
+		dumpFile.Close();
+		saveAsFile.Close();
+	}
 }

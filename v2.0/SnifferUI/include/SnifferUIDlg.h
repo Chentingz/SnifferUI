@@ -48,6 +48,7 @@ protected:
 	CWinThread *myWinThread;
 	int			m_nSelectedItemIndex;			// ListCtrl的选中行下标
 	CFont		m_font;							// ListCtrl的字体
+	bool		m_isCapturing;					// 正在抓包的标志
 	// Generated message map functions
 	//{{AFX_MSG(CSnifferUIDlg)
 	virtual BOOL OnInitDialog();
@@ -65,8 +66,9 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult);
-	afx_msg void On32775();
-	afx_msg void On32776();
+	afx_msg void OnClickedMenuFileExit();
+	afx_msg void OnClickedMenuHelpAbout();
+	afx_msg void OnClickedMenuFileSaveAs();
 };
 
 //{{AFX_INSERT_LOCATION}}

@@ -21,20 +21,25 @@
 #define IDC_FILTER                      1014
 #define IDC_CLEAR                       1015
 #define IDC_SYSLINK1                    1018
-#define ID_32771                        32771
-#define ID_32772                        32772
-#define ID_32773                        32773
-#define ID_32774                        32774
-#define ID_32775                        32775
-#define ID_32776                        32776
-#define ID_BUTTON32782                  32782
+//#define ID_32771                        32771
+//#define ID_32772                        32772
+//#define ID_32773                        32773
+//#define ID_32774                        32774
+//#define ID_32775                        32775
+//#define ID_32776                        32776
+#define ID_BUTTON32782		             32782
+#define ID_MENU_FILE_SAVEAS             32783
+#define ID_MENU_FILE_OPEN               32784
+#define ID_MENU_FILE_CLOSE              32785
+#define ID_MENU_FILE_EXIT               32786
+#define ID_MENU_HELP_ABOUT              32787
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         32783
+#define _APS_NEXT_RESOURCE_VALUE        149
+#define _APS_NEXT_COMMAND_VALUE         32788
 #define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
