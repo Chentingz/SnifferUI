@@ -1,4 +1,4 @@
-<table frame=void rules=none>
+<table>
   <tr>
     <th>
       <img src="https://github.com/Chentingz/SnifferUI/blob/master/SnifferUI/res/SnifferUI.ico" width = 48 height = 48 />
@@ -52,13 +52,14 @@
 
 ## 运行截图
 ### v2.0
-<div style="align: center width=100%">
+<p align=center>
   <img src="https://github.com/Chentingz/SnifferUI/blob/master/img/SnifferUI_v2.0_Snapshot_20190624.png" width = 75% height = 75%/>
-</div>  
+</p>  
 
 ### v1.0
-<img src="https://github.com/Chentingz/SnifferUI/blob/v1.0/img/decode_dns.PNG" width = 75% height = 75%/>  
-
+<p align=center>
+  <img src="https://github.com/Chentingz/SnifferUI/blob/v1.0/img/decode_dns.PNG" width = 75% height = 75%/>  
+</p>
 ## 更新说明
 * 2019/6/24  
   - 完善菜单栏
