@@ -59,10 +59,6 @@
 ### v1.0
 <img src="https://github.com/Chentingz/SnifferUI/blob/v1.0/img/decode_dns.PNG" width = 75% height = 75%/>  
 
-<img src="https://github.com/Chentingz/SnifferUI/blob/v1.0/img/decode_dhcp.png" width = 75% height = 75%/>  
-
-<img src="https://github.com/Chentingz/SnifferUI/blob/v1.0/img/decode_http.png" width = 75% height = 75%/>
-
 ## 更新说明
 * 2019/6/24  
   - 完善菜单栏
