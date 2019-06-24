@@ -1,4 +1,4 @@
-<table border=0>
+<table frame=void rules=none>
   <tr>
     <th>
       <img src="https://github.com/Chentingz/SnifferUI/blob/master/SnifferUI/res/SnifferUI.ico" width = 48 height = 48 />
@@ -9,8 +9,8 @@
   </tr>
 </table>  
 
+这是一款基于MFC和WinPcap库开发的网络抓包和协议分析软件，你可以用它来抓取本机网络流量，或者读取pcap文件离线分析流量。  
 
-基于MFC和WinPcap库开发的网络抓包软件
 开发环境：Win7 + Visual Studio 2015  
 依赖：WinPcap 4.1.3
 
