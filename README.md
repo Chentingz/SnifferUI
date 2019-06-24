@@ -12,7 +12,17 @@
 这是一款基于MFC和WinPcap库开发的网络抓包和协议分析软件，你可以用它来抓取本机网络流量，或者读取pcap文件离线分析流量。  
 
 开发环境：Win7 + Visual Studio 2015  
-依赖：WinPcap 4.1.3
+依赖：WinPcap 4.1.3  
+
+## 目录
+- [功能](#功能)
+- [运行截图](#运行截图)
+  - [v2.0](#v20)
+  - [v1.0](#v10)
+- [更新说明](#更新说明)
+- [ToDoList](#todolist)
+- [Known Bug](#known-bug)
+- [参考资料](#参考资料)
 
 ## 功能
 * 实时网络数据包捕获和协议解析
@@ -119,4 +129,4 @@
 * [1184893257/SimpleSniffer](https://github.com/1184893257/SimpleSniffer)
 * [（鸡啄米） VS2010/MFC编程入门教程之目录和总结](http://www.jizhuomi.com/software/257.html)  
 
-[回到顶部](##功能)
+[回到顶部](##sniferui)
