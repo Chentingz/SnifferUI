@@ -6,7 +6,7 @@
 #define PCAP_ERRBUFF_SIZE	50
 
 /* 堆文件文件名 */
-char filename[50];
+//char filename[50];
 
 /* 控件指针 */
 //CButton			*g_pBtnStart;
@@ -32,19 +32,19 @@ char filename[50];
 //CString g_dumpFileName;
 
 /* 全局变量errbuf，存放错误信息 */
-char g_errbuf[PCAP_ERRBUF_SIZE];
+//char g_errbuf[PCAP_ERRBUF_SIZE];
 
 
 
 /* 数据包列表行列，编号 */
-int g_listctrlPacketListRows = -1;
-int g_listctrlPacketListCols = 0;
-int g_listctrlPacketListCount = 0;
-
-u_short g_packetCaptureSum = 0;
+//int g_listctrlPacketListRows = -1;
+//int g_listctrlPacketListCols = 0;
+//int g_listctrlPacketListCount = 0;
+//
+//u_short g_packetCaptureSum = 0;
 
 /* 链表，储存Packet类实例 */
-CList<Packet, Packet> g_packetLinkList;
+//CList<Packet, Packet> g_packetLinkList;
 
 /* 线程入口函数 */
 //UINT capture_thread(LPVOID pParam);

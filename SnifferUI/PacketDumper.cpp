@@ -20,6 +20,11 @@ CString PacketDumper::getPath()
 	return m_path;
 }
 
+//CString PacketDumper::getFileName()
+//{
+//	return m_path.Sub;
+//}
+
 /**
 *	@brief	将m_path路径上的默认转储文件另存到path路径上
 *	@param	path 另存为路径

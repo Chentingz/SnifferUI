@@ -66,45 +66,53 @@ END
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\SnifferUI.ico"
 
+IDI_ICON_GITHUB         ICON                    "res\\GitHub.ico"
+
+IDI_ICON_EMAIL          ICON                    "res\\Email.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOGEX 0, 0, 167, 150
+IDD_ABOUTBOX DIALOGEX 0, 0, 160, 160
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "关于 SnifferUI"
 FONT 9, "Segoe UI", 400, 0, 0x0
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,18,17,18,17
-    LTEXT           "SnifferUI v2.0",IDC_STATIC,57,17,40,8,SS_NOPREFIX
-    LTEXT           "Tingzheng Chen",IDC_STATIC,57,29,57,8
-    DEFPUSHBUTTON   "确定",IDOK,110,129,50,14,WS_GROUP
-    CTEXT           "GitHub:",IDC_STATIC,23,57,24,8
-    LTEXT           "Build Jan 14 2019",IDC_STATIC,57,42,69,8
-    LTEXT           "Email: ",IDC_STATIC,28,71,21,8
+    ICON            IDR_MAINFRAME,IDC_STATIC,59,10,20,20,SS_REALSIZEIMAGE
+    LTEXT           "SnifferUI",IDC_STATIC,64,50,40,8,SS_NOPREFIX
+    LTEXT           "ver ",IDC_STATIC_VERSION,66,60,28,8
+    LTEXT           "Tingz Chen",IDC_STATIC,61,75,57,8
+    LTEXT           "Build Jan 14 2019",IDC_STATIC,52,85,69,8
+    ICON            IDI_ICON_GITHUB,IDC_STATIC,24,100,18,17,SS_REALSIZEIMAGE
     CONTROL         "<a href=""www.github.com/Chentingz"">www.github.com/Chentingz</a>",IDC_SYSLINK1,
-                    "SysLink",WS_TABSTOP,57,57,101,14
-    LTEXT           "ct2ing@gmail.com",IDC_STATIC,57,71,59,8
+                    "SysLink",0x0,41,100,101,14
+    ICON            IDI_ICON_EMAIL,IDC_STATIC,24,112,18,17,SS_REALSIZEIMAGE
+    LTEXT           "ct2ing@gmail.com",IDC_STATIC,51,112,59,8
+    DEFPUSHBUTTON   "确定",IDOK,98,130,50,14,WS_GROUP
 END
 
-IDD_SNIFFERUI_DIALOG DIALOGEX 0, 0, 601, 330
-STYLE DS_ABSALIGN | DS_SETFONT | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+IDD_SNIFFERUI_DIALOG DIALOGEX 0, 0, 601, 366
+STYLE DS_ABSALIGN | DS_SETFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "SnifferUI"
 MENU IDR_MENU1
 FONT 9, "新宋体", 400, 0, 0x86
 BEGIN
-    COMBOBOX        IDC_COMBO1,-1,8,209,131,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "List4",IDC_LIST1,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,-1,40,601,101
-    PUSHBUTTON      "开始",IDC_START,212,6,47,15,BS_BITMAP
-    PUSHBUTTON      "结束",IDC_STOP,262,6,47,15,BS_BITMAP | WS_DISABLED
-    CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_HSCROLL | WS_TABSTOP,-1,155,293,153
-    EDITTEXT        IDC_EDIT1,306,155,295,153,ES_MULTILINE | ES_READONLY | WS_VSCROLL | WS_HSCROLL
-    PUSHBUTTON      "过滤",IDC_FILTER,212,21,47,15,BS_BITMAP
-    PUSHBUTTON      "清除",IDC_CLEAR,262,21,47,15,BS_BITMAP
-    COMBOBOX        IDC_COMBO2,-1,22,209,131,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "List4",IDC_LIST1,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | WS_BORDER | WS_TABSTOP,0,64,600,101
+    CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_BORDER | WS_HSCROLL | WS_TABSTOP,0,173,293,153
+    EDITTEXT        IDC_EDIT1,303,173,295,153,ES_MULTILINE | ES_READONLY | WS_VSCROLL | WS_HSCROLL
+END
+
+IDD_SHORTCUT_DIALOG DIALOGEX 0, 0, 309, 177
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "快捷键一览"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "确定",IDOK,252,156,50,14
+    CONTROL         "",IDC_LIST2,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,295,143
 END
 
 
@@ -114,7 +122,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,0,0
+ FILEVERSION 0,0,0,0
  PRODUCTVERSION 2,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -131,12 +139,11 @@ BEGIN
         BLOCK "080404b0"
         BEGIN
             VALUE "FileDescription", "SnifferUI"
-            VALUE "FileVersion", "2.0.0.0"
-            VALUE "InternalName", "SnifferUI"
+            VALUE "FileVersion", "0.0.0.0"
             VALUE "LegalCopyright", "版权所有 (C) 2019"
             VALUE "OriginalFilename", "SnifferUI.EXE"
             VALUE "ProductName", "SnifferUI 应用程序"
-            VALUE "ProductVersion", "2.0.0.0"
+            VALUE "ProductVersion", "2.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -156,8 +163,8 @@ GUIDELINES DESIGNINFO
 BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 160
+        LEFTMARGIN, 10
+        RIGHTMARGIN, 150
         TOPMARGIN, 7
         BOTTOMMARGIN, 143
     END
@@ -165,7 +172,16 @@ BEGIN
     IDD_SNIFFERUI_DIALOG, DIALOG
     BEGIN
         RIGHTMARGIN, 600
-        BOTTOMMARGIN, 315
+        TOPMARGIN, 25
+        BOTTOMMARGIN, 351
+    END
+
+    IDD_SHORTCUT_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 302
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 170
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -182,6 +198,11 @@ BEGIN
 END
 
 IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_SHORTCUT_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -209,32 +230,16 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "另存为(&S)\tCtrl+S",             ID_MENU_FILE_SAVEAS
         MENUITEM SEPARATOR
+        MENUITEM "清理缓存文件",                      ID_MENU_FILE_CLEAR_CACHE
+        MENUITEM SEPARATOR
         MENUITEM "退出(&X)\tAlt+F4",              ID_MENU_FILE_EXIT
     END
     POPUP "帮助(&H)"
     BEGIN
+        MENUITEM "快捷键一览",                       ID_MENU_HELP_SHORTCUT
         MENUITEM "关于 SnifferUI",                ID_MENU_HELP_ABOUT
     END
 END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Toolbar
-//
-
-IDR_TOOLBAR1 TOOLBAR 16, 15
-BEGIN
-    BUTTON      ID_BUTTON32782
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Bitmap
-//
-
-IDR_TOOLBAR1            BITMAP                  "res\\toolbar1.bmp"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -259,6 +264,55 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Toolbar
+//
+
+IDR_TOOLBAR1 TOOLBAR 24, 24
+BEGIN
+    BUTTON      ID_TOOLBARBTN_DEVLIST
+    BUTTON      ID_TOOLBARBTN_START
+    BUTTON      ID_TOOLBARBTN_STOP
+    SEPARATOR
+    BUTTON      ID_MENU_FILE_OPEN
+    BUTTON      ID_MENU_FILE_SAVEAS
+END
+
+IDR_TOOLBAR2 TOOLBAR 24, 24
+BEGIN
+    BUTTON      ID_TOOLBARBTN_FILTERLIST
+    BUTTON      ID_TOOLBARBTN_CLEAR
+    BUTTON      ID_TOOLBARBTN_FILTER
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_TOOLBAR1            BITMAP                  "res\\toolbar1.bmp"
+
+IDB_BITMAP_START        BITMAP                  "res\\start.bmp"
+
+IDB_BITMAP_OPEN         BITMAP                  "res\\open.bmp"
+
+IDB_BITMAP_SAVEAS       BITMAP                  "res\\saveas.bmp"
+
+IDB_BITMAP_STOP         BITMAP                  "res\\stop.bmp"
+
+IDB_BITMAP_FILTER       BITMAP                  "E:\\Code\\Sniffer\\SnifferUI\\res\\filter.bmp"
+
+IDB_BITMAP_CLEAR        BITMAP                  "res\\clear.bmp"
+
+IDR_TOOLBAR2            BITMAP                  "res\\toolbar2.bmp"
+
+IDB_BITMAP_DEV          BITMAP                  "res\\dev.bmp"
+
+IDB_BITMAP_FILTERLIST   BITMAP                  "res\\filterlist.bmp"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
@@ -270,7 +324,8 @@ END
 STRINGTABLE
 BEGIN
     ID_INDICATOR_STATUS     "就绪"
-    ID_INDICATOR_PKT_TOTAL_NUM "无数据包"
+    ID_INDICATOR_PKT_TOTAL_NUM "数据包：0"
+    ID_INDICATOR_PKT_DISPLAY_NUM "已显示：0（0.0%）"
 END
 
 #endif    // 中文(简体，中国) resources

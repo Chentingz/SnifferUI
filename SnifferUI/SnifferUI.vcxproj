@@ -58,8 +58,8 @@
     <IntDir>.\Debug\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <ReferencePath>$(ReferencePath)</ReferencePath>
-    <LibraryPath>E:\Code\Sniffer\SnifferUI\winpcap\Lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>E:\Code\Sniffer\SnifferUI\include;E:\Code\Sniffer\SnifferUI\winpcap\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>.\winpcap\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>.\include;.\winpcap\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>.\Release\</OutDir>
@@ -148,53 +148,66 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Packet.cpp" />
-    <ClCompile Include="PacketCatcher.cpp" />
-    <ClCompile Include="PacketDumper.cpp" />
-    <ClCompile Include="PacketPool.cpp" />
-    <ClCompile Include="SnifferUI.cpp" />
-    <ClCompile Include="SnifferUIDlg.cpp" />
-    <ClCompile Include="StdAfx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdafx.h</PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdafx.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="ThreadParam.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="res\windows.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Global.h" />
     <ClInclude Include="include\Packet.h" />
+    <ClInclude Include="include\PacketCatcher.h" />
+    <ClInclude Include="include\PacketDumper.h" />
+    <ClInclude Include="include\PacketPool.h" />
     <ClInclude Include="include\ProtocolHeader.h" />
+    <ClInclude Include="include\resource.h" />
+    <ClInclude Include="include\ShortCutDialog.h" />
     <ClInclude Include="include\SnifferUI.h" />
     <ClInclude Include="include\SnifferUIDlg.h" />
     <ClInclude Include="include\StdAfx.h" />
-    <ClInclude Include="include\Global.h" />
-    <ClInclude Include="PacketCatcher.h" />
-    <ClInclude Include="PacketDumper.h" />
-    <ClInclude Include="PacketPool.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="ThreadParam.h" />
+    <ClInclude Include="include\ThreadParam.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SnifferUI.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\btnPause.ico" />
+    <Image Include="..\..\Sniffer\SnifferUI\res\filter.bmp" />
+    <Image Include="res\bitmap1.bmp" />
     <Image Include="res\btnStart.bmp" />
-    <Image Include="res\btnStart.ico" />
-    <Image Include="res\btnStop.ico" />
+    <Image Include="res\btnStop.bmp" />
+    <Image Include="res\clear.bmp" />
+    <Image Include="res\dev.bmp" />
+    <Image Include="res\Email.ico" />
+    <Image Include="res\filter.bmp" />
+    <Image Include="res\filterlist.bmp" />
+    <Image Include="res\GitHub.bmp" />
+    <Image Include="res\Github.ico" />
+    <Image Include="res\net.bmp" />
+    <Image Include="res\open.bmp" />
+    <Image Include="res\saveas.bmp" />
     <Image Include="res\SnifferUI.ico" />
+    <Image Include="res\start.bmp" />
+    <Image Include="res\stop.bmp" />
+    <Image Include="res\test.bmp" />
     <Image Include="res\toolbar1.bmp" />
+    <Image Include="res\toolbar2.bmp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram1.cd" />
     <None Include="res\SnifferUI.rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Packet.cpp" />
+    <ClCompile Include="PacketCatcher.cpp" />
+    <ClCompile Include="PacketDumper.cpp" />
+    <ClCompile Include="PacketPool.cpp" />
+    <ClCompile Include="ShortCutDialog.cpp" />
+    <ClCompile Include="SnifferUI.cpp" />
+    <ClCompile Include="SnifferUIDlg.cpp" />
+    <ClCompile Include="StdAfx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ThreadParam.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

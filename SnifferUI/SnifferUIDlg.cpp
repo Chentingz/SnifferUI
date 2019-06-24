@@ -5,15 +5,10 @@
 #include "SnifferUI.h"
 #include "SnifferUIDlg.h"
 #include "ThreadParam.h"
-//#include "packet_header.h"
 #include "Global.h"
-//#include "string.h"
-//#include "ctype.h"
 #include "PacketCatcher.h"
 #include <vector>
-//#include "remote-ext.h"
-//#include "winsock2.h"
-
+#include "ShortCutDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -21,7 +16,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-
+#pragma comment(lib, "version.lib")	// 用于使用GetFileVersionInfoSize、GetFileVersionInfo、VerQueryValue等函数
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
@@ -29,6 +24,9 @@ class CAboutDlg : public CDialog
 {
 public:
 	CAboutDlg();
+	BOOL OnInitDialog();
+	//void OnShowWindow(BOOL bShow, UINT nStatus);
+	//CString CAboutDlg::GetAppVersion(CString *AppName);
 
 // Dialog Data
 	//{{AFX_DATA(CAboutDlg)
@@ -54,6 +52,57 @@ CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	//}}AFX_DATA_INIT
+}
+
+BOOL CAboutDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	/* 获得程序路径 */
+	WCHAR l_wcaAppPath[MAX_PATH];//保存应用程序路径 
+	::GetModuleFileName(NULL, (LPSTR)l_wcaAppPath, MAX_PATH);
+
+	/* 获得版本信息大小 */
+	UINT l_uiVersionInfoSize;//保存版本信息总体的大小
+	TCHAR * l_ptcVersionInfo;
+	l_uiVersionInfoSize = ::GetFileVersionInfoSize((LPSTR)l_wcaAppPath, 0);//获得大小 
+	l_ptcVersionInfo = new TCHAR[l_uiVersionInfoSize];//申请空间  
+
+	 /* 该结构用于获得版本信息的语言信息 */
+	struct VersionLanguage
+	{
+		WORD m_wLanguage;
+		WORD m_wCcodePage;
+	};
+
+	VersionLanguage * l_ptVersionLanguage;
+	UINT l_uiSize;
+
+	if (::GetFileVersionInfo((LPSTR)l_wcaAppPath, 0, l_uiVersionInfoSize, l_ptcVersionInfo) != 0)//获取版本信息 
+	{
+
+		if (::VerQueryValue(l_ptcVersionInfo, _T("\\VarFileInfo\\Translation"), reinterpret_cast<LPVOID*>(&l_ptVersionLanguage), &l_uiSize))//查询语言信息并保存
+		{
+			/* 生成查询信息格式符 */
+			CString l_cstrSubBlock;
+			l_cstrSubBlock.Format(_T("\\StringFileInfo\\%04x%04x\\ProductVersion"), l_ptVersionLanguage->m_wLanguage, l_ptVersionLanguage->m_wCcodePage);
+
+			LPVOID * l_pvResult;
+
+			/* 查询指定信息 */
+			if (::VerQueryValue(static_cast<LPVOID>(l_ptcVersionInfo), l_cstrSubBlock.GetBuffer(), reinterpret_cast<LPVOID*>(&l_pvResult), &l_uiSize))
+			{
+				CString l_cstrProductVersion(reinterpret_cast<TCHAR *>(l_pvResult));// 获得版本信息
+				GetDlgItem(IDC_STATIC_VERSION)->SetWindowTextA("ver "+ l_cstrProductVersion);// 版本信息打印到关于窗口上
+			}
+
+		}
+	}
+
+	delete[] l_ptcVersionInfo;
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+				  // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
@@ -92,16 +141,10 @@ void CSnifferUIDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CSnifferUIDlg)
-	DDX_Control(pDX, IDC_START, m_btnStart);
-	DDX_Control(pDX, IDC_STOP, m_btnStop);
-	DDX_Control(pDX, IDC_FILTER, m_btnFilter);
-	DDX_Control(pDX, IDC_CLEAR, m_btnClear);
-	DDX_Control(pDX, IDC_COMBO1, m_comboBoxDevList);
 	DDX_Control(pDX, IDC_LIST1, m_listCtrlPacketList);
-	DDX_Control(pDX, IDC_TREE1, m_treeCtrlPacketInfo);
-	DDX_Control(pDX, IDC_EDIT1, m_editCtrlPacketData);
+	DDX_Control(pDX, IDC_TREE1, m_treeCtrlPacketDetails);
+	DDX_Control(pDX, IDC_EDIT1, m_editCtrlPacketBytes);
 	//DDX_Control(pDX, IDC_RICHEDIT21, richEditCtrlFilterList_);
-	DDX_Control(pDX, IDC_COMBO2, m_comboBoxFilterList);
 	//}}AFX_DATA_MAP
 
 	
@@ -112,24 +155,26 @@ BEGIN_MESSAGE_MAP(CSnifferUIDlg, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_START, OnClickedStart)
-	ON_BN_CLICKED(IDC_STOP, OnClickedStop)
-	ON_BN_CLICKED(IDC_FILTER, &CSnifferUIDlg::OnClickedFilter)
-	ON_BN_CLICKED(IDC_CLEAR, &CSnifferUIDlg::OnClickedClear)
 	ON_NOTIFY(NM_CLICK, IDC_LIST1, OnClickedList1)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST1, &CSnifferUIDlg::OnCustomdrawList1)
 	ON_MESSAGE(WM_PKTCATCH, &CSnifferUIDlg::OnPktCatchMessage)
 	ON_MESSAGE(WM_TEXIT, &CSnifferUIDlg::OnTExitMessage)
 	//}}AFX_MSG_MAP
 
-ON_NOTIFY(LVN_KEYDOWN, IDC_LIST1, &CSnifferUIDlg::OnKeydownList1)
-ON_COMMAND(ID_MENU_HELP_ABOUT, &CSnifferUIDlg::OnMenuHelpAbout)
-ON_COMMAND(ID_MENU_FILE_OPEN, &CSnifferUIDlg::OnMenuFileOpen)
-ON_COMMAND(ID_MENU_FILE_CLOSE, &CSnifferUIDlg::OnMenuFileClose)
-ON_COMMAND(ID_MENU_FILE_SAVEAS, &CSnifferUIDlg::OnMenuFileSaveAs)
-ON_COMMAND(ID_MENU_FILE_EXIT, &CSnifferUIDlg::OnMenuFileExit)
-ON_UPDATE_COMMAND_UI(ID_INDICATOR_STATUS, &CSnifferUIDlg::OnUpdateStatus)
-//ON_COMMAND(IDC_LIST1, &CSnifferUIDlg::OnAcceleratorCtrlG)
+	ON_NOTIFY(LVN_KEYDOWN, IDC_LIST1, &CSnifferUIDlg::OnKeydownList1)
+	ON_COMMAND(ID_MENU_FILE_OPEN, &CSnifferUIDlg::OnMenuFileOpen)
+	ON_COMMAND(ID_MENU_FILE_CLOSE, &CSnifferUIDlg::OnMenuFileClose)
+	ON_COMMAND(ID_MENU_FILE_CLEAR_CACHE, &CSnifferUIDlg::OnMenuFileClearCache)
+	ON_COMMAND(ID_MENU_FILE_SAVEAS, &CSnifferUIDlg::OnMenuFileSaveAs)
+	ON_COMMAND(ID_MENU_FILE_EXIT, &CSnifferUIDlg::OnMenuFileExit)
+	ON_COMMAND(ID_MENU_HELP_ABOUT, &CSnifferUIDlg::OnMenuHelpAbout)
+	ON_COMMAND(ID_MENU_HELP_SHORTCUT, &CSnifferUIDlg::OnMenuHelpShortCut)
+	//ON_UPDATE_COMMAND_UI(ID_INDICATOR_STATUS, &CSnifferUIDlg::OnUpdateStatus)
+	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXT, 0, 0xffff, OnToolTipText)
+	ON_COMMAND(ID_TOOLBARBTN_START, &CSnifferUIDlg::OnClickedStart)
+	ON_COMMAND(ID_TOOLBARBTN_STOP, &CSnifferUIDlg::OnClickedStop)
+	ON_COMMAND(ID_TOOLBARBTN_CLEAR, &CSnifferUIDlg::OnClickedClear)
+	ON_COMMAND(ID_TOOLBARBTN_FILTER, &CSnifferUIDlg::OnClickedFilter)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -168,19 +213,17 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
 	// TODO: Add extra initialization here
-	
-	initialAccelerator();
-	initialMenu();
-	initialComboBoxDevList();			// 下拉列表初始化，显示网卡列表
+	initialAccelerator();				// 快捷键初始化
+	initialMenuBar();					// 菜单栏初始化
+	initialToolBar();					// 工具栏初始化
+	initialComboBoxDevList();			// 网卡列表初始化
 	initialComboBoxFilterList();		// 过滤器列表初始化
-	initialListCtrlPacketList();		// 列表控件初始化
+	initialListCtrlPacketList();		// 列表控件（数据包列表）初始化
+	initialTreeCtrlPacketDetails();		// 树形控件（数据包详情）初始化
+	initialEditCtrlPacketBytes();		// 编辑控件（数据包字节流）初始化
 	initialStatusBar();					// 状态栏初始化
+
 	return TRUE;  // return TRUE  unless you set the focus to a control
-}
-void CSnifferUIDlg::initialAccelerator()
-{
-	m_hAccelMenu = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MENU1));	// 加载快捷键资源
-	m_hAccel = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR1));
 }
 
 void CSnifferUIDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -261,26 +304,34 @@ void CSnifferUIDlg::OnClickedStart()
 	{
 		CString status = "正在捕获：" + m_catcher.getDevName();
 		/* 修改控件使能状态 */
-		m_btnStart.EnableWindow(FALSE);
-		m_btnStop.EnableWindow(TRUE);
 		m_comboBoxDevList.EnableWindow(FALSE);
-		m_Menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"打开"
-		m_Menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
-		m_Menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"另存为"
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_TOOLBARBTN_START, FALSE);
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_TOOLBARBTN_STOP, TRUE);
+
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_OPEN, FALSE);
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_SAVEAS, FALSE);
+
+		m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"打开"
+		m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
+		m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"另存为"
 		m_statusBar.SetPaneText(0, status, TRUE);				// 修改状态
 		/* 清空控件显示内容 */
 		m_listCtrlPacketList.DeleteAllItems();
-		m_treeCtrlPacketInfo.DeleteAllItems();
-		m_editCtrlPacketData.SetWindowTextA("");
-	
+		m_treeCtrlPacketDetails.DeleteAllItems();
+		m_editCtrlPacketBytes.SetWindowTextA("");
+
 		AfxGetMainWnd()->SetWindowText(status);
 
 		m_pool.clear();
 
-		m_pktDumper.setPath(".\\tmp\\SnifferUI_" + currentTime.Format("%Y%m%d%H%M%S") + ".pcap");
+		CString fileName = "SnifferUI_" + currentTime.Format("%Y%m%d%H%M%S") + ".pcap";
+		m_pktDumper.setPath(".\\tmp\\" + fileName);
 
 		m_catcher.startCapture(MODE_CAPTURE_LIVE);
 		m_pktCaptureFlag = true;
+
+		m_openFileName = fileName;
+		m_fileOpenFlag = true;
 	}
 }
 
@@ -292,13 +343,18 @@ void CSnifferUIDlg::OnClickedStart()
 void CSnifferUIDlg::OnClickedStop() 
 {
 
-	AfxGetMainWnd()->SetWindowText(m_catcher.getDevName());
-	m_btnStart.EnableWindow(TRUE);
-	m_btnStop.EnableWindow(FALSE);
+	AfxGetMainWnd()->SetWindowText(m_pktDumper.getPath());	// 修改标题栏
+
 	m_comboBoxDevList.EnableWindow(TRUE);
-	m_Menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
-	m_Menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
-	m_Menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_TOOLBARBTN_START, TRUE);
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_TOOLBARBTN_STOP, FALSE);
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_OPEN, TRUE);
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_SAVEAS, TRUE);
+
+	m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
+	m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
+	m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+	m_statusBar.SetPaneText(0, "捕获结束", true);			// 修改状态
 
 	m_catcher.stopCapture();
 	m_pktCaptureFlag = false;
@@ -350,9 +406,24 @@ void CSnifferUIDlg::OnClickedFilter()
 	m_comboBoxFilterList.GetLBText(selIndex, strFilter);
 
 	m_listCtrlPacketList.DeleteAllItems();
-	m_treeCtrlPacketInfo.DeleteAllItems();
-	m_editCtrlPacketData.SetWindowTextA("");
+	m_treeCtrlPacketDetails.DeleteAllItems();
+	m_editCtrlPacketBytes.SetWindowTextA("");
+
 	printListCtrlPacketList(m_pool, strFilter);
+
+	//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
+	//int pktTotalNum = m_pool.getSize();
+
+	updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
+	//double percentage;
+	//CString strPktDisplayNum;
+	//if (pktDisplayNum == 0 || pktTotalNum == 0)
+	//	percentage = 0.0;
+	//else
+	//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
+	//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
+	//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
+
 }
 
 /**
@@ -362,14 +433,27 @@ void CSnifferUIDlg::OnClickedFilter()
 */
 void CSnifferUIDlg::OnClickedClear()
 {
-	//if (m_comboBoxFilterList.GetCurSel() == 0)
-	//	return;
-	m_listCtrlPacketList.DeleteAllItems();
-	m_treeCtrlPacketInfo.DeleteAllItems();
-	m_editCtrlPacketData.SetWindowTextA("");
 	m_comboBoxFilterList.SetCurSel(0);
+	if (m_listCtrlPacketList.GetItemCount() == 0)
+		return;
 
+	m_listCtrlPacketList.DeleteAllItems();
+	m_treeCtrlPacketDetails.DeleteAllItems();
+	m_editCtrlPacketBytes.SetWindowTextA("");
+	
 	printListCtrlPacketList(m_pool);
+
+	//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
+	//int pktTotalNum = m_pool.getSize();
+	//double percentage;
+	//CString strPktDisplayNum;
+	//if (pktDisplayNum == 0 || pktTotalNum == 0)
+	//	percentage = 0.0;
+	//else
+	//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
+	//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
+	//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
+	updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 }
 /*************************************************************
 *
@@ -377,23 +461,120 @@ void CSnifferUIDlg::OnClickedClear()
 *
 *************************************************************/
 /**
+*	@brief	快捷键初始化
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::initialAccelerator()
+{
+	m_hAccelMenu = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_MENU1));	// 加载菜单快捷键资源
+	m_hAccel = ::LoadAccelerators(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDR_ACCELERATOR1));
+}
+
+/**
 *	@brief	菜单栏初始化
 *	@param	-
 *	@return -
 */
-void CSnifferUIDlg::initialMenu()
+void CSnifferUIDlg::initialMenuBar()
 {
-	m_Menu.LoadMenu(IDR_MENU1);
-	SetMenu(&m_Menu);
+	m_menu.LoadMenu(IDR_MENU1);
+	SetMenu(&m_menu);
 
 	/* 菜单项禁用 */
 //	CMenu* pMenu = this->GetMenu();
-	if (m_Menu)
+	if (m_menu)
 	{
-		m_Menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
-		m_Menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
+		m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
+		m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
 	}
 }
+
+/**
+*	@brief	工具栏初始化
+*	@param	-
+*	@return -
+*/
+void CSnifferUIDlg::initialToolBar()
+{
+	// 主工具栏创建 
+	if (!m_toolBarMain.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP | CBRS_TOOLTIPS | CBRS_GRIPPER | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
+		!m_toolBarMain.LoadToolBar(IDR_TOOLBAR1))
+	{
+		AfxMessageBox(_T("未能创建主工具栏\n"));
+		return; 
+	}
+
+	// 在主工具栏按钮上创建组合框（网卡列表） 
+	//在按钮上创建组合框，按钮位置决定了组合框的位置
+	int index = m_toolBarMain.CommandToIndex(ID_TOOLBARBTN_DEVLIST);
+	m_toolBarMain.SetButtonInfo(index, ID_TOOLBARBTN_DEVLIST, TBBS_SEPARATOR, 300);//设置组合框的ID，类型（这里是分隔栏），300是指分隔栏宽度
+
+	// 根据分隔符的尺寸rect建立组合框																	  
+	CRect rect;
+	m_toolBarMain.GetItemRect(index, &rect);
+	rect.left += 10;
+	rect.top += 3;
+	m_comboBoxDevList.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | CBS_DROPDOWNLIST, rect, &m_toolBarMain, ID_TOOLBARBTN_DEVLIST);
+
+	// 读取主工具栏按钮图标，存储到ImageList，工具栏读取ImageList
+	m_imageListMain.Create(BITMAP_WIDTH, BITMAP_HEIGHT, ILC_COLOR24 | ILC_MASK, 0, 0);
+	for (int i = 0; i < BITMAP_LIST_MAIN_SIZE; ++i)
+	{
+		m_bitmapListMain[i].LoadBitmapA(IDB_BITMAP_DEV + i);
+		m_imageListMain.Add(&m_bitmapListMain[i], RGB(0, 0, 0));
+	}
+	m_toolBarMain.GetToolBarCtrl().SetImageList(&m_imageListMain);
+
+	//m_toolBarMain.GetToolBarCtrl().SetButtonSize(CSize(34, 34));
+	//m_toolBarMain.GetToolBarCtrl().SetBitmapSize(CSize(16, 16));
+
+	// 禁用主工具栏上的按钮 
+	//m_toolBarMain.GetToolBarCtrl().EnableButton(IDC_DROPDOWNBTN_DEVLIST, FALSE);
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_TOOLBARBTN_STOP, FALSE);
+	m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_SAVEAS, FALSE);
+
+	
+	// 过滤器工具栏创建
+	if (!m_toolBarFilter.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP | CBRS_TOOLTIPS | CBRS_GRIPPER | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
+		!m_toolBarFilter.LoadToolBar(IDR_TOOLBAR2))
+	{
+		AfxMessageBox(_T("未能创建过滤器工具栏\n"));
+		return;
+	}
+
+	// 在过滤器工具栏按钮上创建组合框（过滤器列表）
+    index = m_toolBarFilter.CommandToIndex(ID_TOOLBARBTN_FILTERLIST);
+	m_toolBarFilter.SetButtonInfo(index, ID_TOOLBARBTN_FILTERLIST, TBBS_SEPARATOR, 300);//设置组合框的ID，类型（这里是分隔栏），300是指分隔栏宽度
+
+	// 根据分隔符的尺寸rect建立组合框
+	m_toolBarFilter.GetItemRect(index, &rect);
+	rect.left += 10;
+	rect.top += 3;
+	m_comboBoxFilterList.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | CBS_DROPDOWNLIST, rect, &m_toolBarFilter, ID_TOOLBARBTN_FILTERLIST);
+
+	// 读取过滤器工具栏按钮图标，存储到ImageList，工具栏读取ImageList
+	m_imageListFilter.Create(BITMAP_WIDTH, BITMAP_HEIGHT, ILC_COLOR24 | ILC_MASK, 0, 0);
+	for (int i = 0; i < BITMAP_LIST_FILTER_SIZE; ++i)
+	{
+		m_bitmapListFilter[i].LoadBitmapA(IDB_BITMAP_DEV + BITMAP_LIST_MAIN_SIZE + i);
+		m_imageListFilter.Add(&m_bitmapListFilter[i], RGB(0, 0, 0));
+	}
+	m_toolBarFilter.GetToolBarCtrl().SetImageList(&m_imageListFilter);
+
+	// 设置下拉列表字体
+	m_comboFont.CreateFontA(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, 0, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_ROMAN, "新宋体");
+	m_comboBoxDevList.SetFont(&m_comboFont);
+	m_comboBoxFilterList.SetFont(&m_comboFont);
+
+	// 设置下拉列表高度
+	m_comboBoxDevList.SetItemHeight(-1, 18);
+	m_comboBoxFilterList.SetItemHeight(-1, 18);
+
+	//控件条定位  
+	RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0);
+}
+
 /**
 *	@brief	获取本地机器网卡列表,并打印网卡描述到下拉列表中
 *	@param	-
@@ -444,26 +625,63 @@ void CSnifferUIDlg::initialComboBoxFilterList()
 }
 
 /**
-*	@brief	数据包列表初始化
+*	@brief	列表控件（数据包列表）初始化
 *	@param	-
 *	@return -
 */
 void CSnifferUIDlg::initialListCtrlPacketList()
 {
+	// 根据过滤器工具栏位置调整列表控件（数据包列表）位置
+	CRect rect;
+	m_toolBarFilter.GetWindowRect(&rect);
+	ScreenToClient(&rect);
+	GetDlgItem(IDC_LIST1)->SetWindowPos(NULL, rect.left, rect.bottom + 5, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+	
 	DWORD dwStyle = m_listCtrlPacketList.GetExtendedStyle();	// 添加列表控件的网格线
-	dwStyle |= LVS_EX_FULLROWSELECT;
-	dwStyle |= LVS_EX_GRIDLINES;
-
+	dwStyle |= LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_HEADERDRAGDROP;
 	m_listCtrlPacketList.SetExtendedStyle(dwStyle);
-	// TODO：列宽度根据控件大小动态调整
-	m_listCtrlPacketList.InsertColumn(0, "编号", LVCFMT_CENTER, 40);
-	m_listCtrlPacketList.InsertColumn(1, "时间", LVCFMT_CENTER, 140);
-	m_listCtrlPacketList.InsertColumn(2, "协议", LVCFMT_CENTER, 60);
-	m_listCtrlPacketList.InsertColumn(3, "长度", LVCFMT_CENTER, 50);
-	m_listCtrlPacketList.InsertColumn(4, "源MAC地址", LVCFMT_CENTER, 180);
-	m_listCtrlPacketList.InsertColumn(5, "目的MAC地址", LVCFMT_CENTER, 180);
-	m_listCtrlPacketList.InsertColumn(6, "源IP地址", LVCFMT_CENTER, 120);
-	m_listCtrlPacketList.InsertColumn(7, "目的IP地址", LVCFMT_CENTER, 120);
+
+	m_listCtrlPacketList.GetWindowRect(&rect);
+	ScreenToClient(&rect);
+
+	int index = 0;
+	m_listCtrlPacketList.InsertColumn(index, "编号", LVCFMT_CENTER, rect.Width() * 0.05);
+	m_listCtrlPacketList.InsertColumn(++index, "时间", LVCFMT_CENTER, rect.Width() * 0.15);
+	m_listCtrlPacketList.InsertColumn(++index, "协议", LVCFMT_CENTER, rect.Width() * 0.05);
+	m_listCtrlPacketList.InsertColumn(++index, "长度", LVCFMT_CENTER, rect.Width() * 0.05);
+	m_listCtrlPacketList.InsertColumn(++index, "源MAC地址", LVCFMT_CENTER, rect.Width() * 0.175);
+	m_listCtrlPacketList.InsertColumn(++index, "目的MAC地址", LVCFMT_CENTER, rect.Width() * 0.175);
+	m_listCtrlPacketList.InsertColumn(++index, "源IP地址", LVCFMT_CENTER, rect.Width() * 0.175);
+	m_listCtrlPacketList.InsertColumn(++index, "目的IP地址", LVCFMT_CENTER, rect.Width() * 0.175);
+
+}
+
+/**
+*	@brief	树形控件（数据包详情）初始化
+*	@param	-
+*	@return -
+*/
+void CSnifferUIDlg::initialTreeCtrlPacketDetails()
+{
+	// 根据列表控件（数据包列表）位置调整树形控件（数据包详情）位置
+	CRect rect, winRect;
+	m_listCtrlPacketList.GetWindowRect(&rect);
+	ScreenToClient(&rect);
+	GetDlgItem(IDC_TREE1)->SetWindowPos(NULL, rect.left, rect.bottom + 5, rect.Width() * 0.5, rect.Height() + 125, SWP_NOZORDER);
+}
+
+/**
+*	@brief	编辑控件（数据包字节流）初始化
+*	@param	-
+*	@return -
+*/
+void CSnifferUIDlg::initialEditCtrlPacketBytes()
+{
+	// 根据树形控件控件（数据包详情）位置调整编辑控件（数据包字节流）位置
+	CRect rect;
+	m_treeCtrlPacketDetails.GetWindowRect(&rect);
+	ScreenToClient(&rect);
+	GetDlgItem(IDC_EDIT1)->SetWindowPos(NULL, rect.right + 5, rect.top, rect.Width(), rect.Height(), SWP_NOZORDER);
 }
 
 /**
@@ -477,18 +695,94 @@ void CSnifferUIDlg::initialStatusBar()
 	{
 		static UINT indicators[] =
 		{
-			  
 			ID_INDICATOR_STATUS,
 			ID_INDICATOR_PKT_TOTAL_NUM,
+			ID_INDICATOR_PKT_DISPLAY_NUM
 		};
 		int indicatorsSize = sizeof(indicators) / sizeof(UINT);
 		m_statusBar.SetIndicators(indicators, indicatorsSize);
 		CRect rect;
 		GetClientRect(rect);
-		m_statusBar.SetPaneInfo(0, ID_INDICATOR_STATUS, SBPS_STRETCH, rect.Width() / indicatorsSize);
-		m_statusBar.SetPaneInfo(1, ID_INDICATOR_PKT_TOTAL_NUM, SBPS_NORMAL, rect.Width() / indicatorsSize);
-		RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0); // 显示工具栏、状态栏
+		int index = 0;
+		m_statusBar.SetPaneInfo(index, ID_INDICATOR_STATUS, SBPS_STRETCH, rect.Width() * 0.6);
+		m_statusBar.SetPaneInfo(++index, ID_INDICATOR_PKT_TOTAL_NUM, SBPS_NORMAL, rect.Width() * 0.2);
+		m_statusBar.SetPaneInfo(++index, ID_INDICATOR_PKT_DISPLAY_NUM, SBPS_NORMAL, rect.Width() * 0.15);
+		RepositionBars(AFX_IDW_CONTROLBAR_FIRST, AFX_IDW_CONTROLBAR_LAST, 0); // 显示状态栏
 	}
+}
+/**
+*	@brief	更新状态栏
+*	@param [in]	status	状态
+*	@param [in]	pktTotalNum	数据包总数	值为非负数时更新该字段
+*	@param [in]	pktDisplayNum	数据包显示个数	值为非负数时更新该字段
+*	@return	-
+*/
+void CSnifferUIDlg::updateStatusBar(const CString & status, int pktTotalNum, int pktDisplayNum)
+{
+	if (!status.IsEmpty())
+	{
+		int index = m_statusBar.CommandToIndex(ID_INDICATOR_STATUS);
+		m_statusBar.SetPaneText(index, status, TRUE);
+	}
+	if (pktTotalNum >= 0)
+	{
+		int index = m_statusBar.CommandToIndex(ID_INDICATOR_PKT_TOTAL_NUM);
+		CString text;
+		text.Format("数据包：%d", pktTotalNum);
+		m_statusBar.SetPaneText(index, text, TRUE);
+	}
+	if (pktDisplayNum >= 0)
+	{
+		int index = m_statusBar.CommandToIndex(ID_INDICATOR_PKT_DISPLAY_NUM);
+		CString text;
+		double percentage = (pktDisplayNum == 0 || pktTotalNum == 0)? 
+			0.0 : ((double)pktDisplayNum / pktTotalNum * 100);
+		text.Format("已显示：%d (%.1f%%)", pktDisplayNum, percentage);
+		m_statusBar.SetPaneText(index, text, TRUE);
+	}
+}
+/**
+*	@brief	删除指定文件夹中所有pcap文件
+*	@param [in]	dirPath	 文件夹路径
+*	@return	-
+*/
+bool CSnifferUIDlg::deleteDirectory(CString dirPath)
+{
+		CFileFind finder;
+		//TCHAR sTempFileFind[MAX_PATH] = { 0 };
+		//wsprintf(sTempFileFind, _T("%s\\*.pcap"), path);
+
+		CString path(dirPath);
+		path += _T("\\*.pcap");
+
+		BOOL isFound = finder.FindFile(path);
+		if (!isFound)
+		{
+			return false;
+		}
+		while (isFound)
+		{
+			isFound = finder.FindNextFile();
+
+			// 跳过 . 和 .. ; 否则会陷入无限循环中
+			if (finder.IsDots())
+				continue;
+
+			// 如果是目录，进入搜索 （递归）
+			if (finder.IsDirectory())
+			{
+				CString subDirPath = dirPath + finder.GetFileName();
+				deleteDirectory(subDirPath); //删除文件夹下的文件
+				RemoveDirectory(subDirPath); //移除空文件
+			}
+			else
+			{
+				CString filePath = dirPath + finder.GetFileName();
+				DeleteFile(filePath);
+			}
+		}
+		finder.Close();
+		return true;
 }
 /**
 *	@brief	打印数据包概要信息到列表控件
@@ -500,38 +794,33 @@ int CSnifferUIDlg::printListCtrlPacketList(const Packet &pkt)
 	if (pkt.isEmpty())
 		return -1;
 
-	int listctrlPacketListCols = 0;
+	int row = 0;	// 行号
+	int col = 0;	// 列号
 	/* 打印编号 */
 	CString	strNum;
 	strNum.Format("%d", pkt.num);
 
-	UINT mask = 0;
-	mask |= LVIF_PARAM;
-	mask |= LVIF_TEXT;
+	UINT mask = LVIF_PARAM | LVIF_TEXT;
 	
 	// protocol字段在OnCustomdrawList1()中使用
-	int row = m_listCtrlPacketList.InsertItem(mask, m_listCtrlPacketList.GetItemCount(), strNum, 0, 0, 0, (LPARAM)&(pkt.protocol));
+	row = m_listCtrlPacketList.InsertItem(mask, m_listCtrlPacketList.GetItemCount(), strNum, 0, 0, 0, (LPARAM)&(pkt.protocol));
 	
 
 	/* 打印时间 */
 	CTime pktArrivalTime( (time_t)(pkt.header->ts.tv_sec) ) ;
 	CString strPktArrivalTime = pktArrivalTime.Format("%Y/%m/%d %H:%M:%S");
-	m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strPktArrivalTime);
+	m_listCtrlPacketList.SetItemText(row, ++col, strPktArrivalTime);
 
 	/* 打印协议 */	
 	if (!pkt.protocol.IsEmpty())
-	{
-		m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, pkt.protocol);
-	}
+		m_listCtrlPacketList.SetItemText(row, ++col, pkt.protocol);
 	else
-	{
-		++listctrlPacketListCols;
-	}
+		++col;
 
 	/* 打印长度 */
 	CString strCaplen;
 	strCaplen.Format("%d", pkt.header->caplen);
-	m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strCaplen);
+	m_listCtrlPacketList.SetItemText(row, ++col, strCaplen);
 
 	/* 打印源目MAC地址 */
 	if (pkt.ethh != NULL)
@@ -539,12 +828,12 @@ int CSnifferUIDlg::printListCtrlPacketList(const Packet &pkt)
 		CString strSrcMAC = MACAddr2CString(pkt.ethh->srcaddr);
 		CString strDstMAC = MACAddr2CString(pkt.ethh->dstaddr);
 
-		m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strSrcMAC);
-		m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strDstMAC);
+		m_listCtrlPacketList.SetItemText(row, ++col, strSrcMAC);
+		m_listCtrlPacketList.SetItemText(row, ++col, strDstMAC);
 	}
 	else
 	{
-		listctrlPacketListCols += 2;
+		col += 2;
 	}
 
 	/* 打印源目IP地址 */
@@ -553,53 +842,55 @@ int CSnifferUIDlg::printListCtrlPacketList(const Packet &pkt)
 		CString strSrcIP = IPAddr2CString(pkt.iph->srcaddr);
 		CString strDstIP = IPAddr2CString(pkt.iph->dstaddr);
 
-		m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strSrcIP);
-		m_listCtrlPacketList.SetItemText(row, ++listctrlPacketListCols, strDstIP);
+		m_listCtrlPacketList.SetItemText(row, ++col, strSrcIP);
+		m_listCtrlPacketList.SetItemText(row, ++col, strDstIP);
 	}
 	else
 	{
-		//g_listctrlPacketListCols += 2;
-		listctrlPacketListCols += 2;
+		col += 2;
 	}
-	//g_listctrlPacketListCols = 0;		// 列复位 
-
 	return 0;
 }
 
 /**
 *	@brief	打印数据包概要信息到列表控件
-*	@param	数据包链表
-*	@return	0 打印成功	-1 打印失败
+*	@param	pool 数据包池
+*	@return	>=0 数据包池中数据包个数 -1 打印失败 
 */
 int CSnifferUIDlg::printListCtrlPacketList(PacketPool &pool)
 {
 	if (pool.isEmpty())
 		return -1;
-
-	for (int i = 1; i <= pool.getSize(); ++i)
+	int pktNum = pool.getSize();
+	for (int i = 1; i <= pktNum; ++i)
 		printListCtrlPacketList(pool.get(i));
 
-	return 0;
+	return pktNum;
 }
 
 /**
 *	@brief	遍历数据包链表，根据过滤器名称打印数据包到列表控件
 *	@param	packetLinkList	数据包链表
 *	@param	filter	过滤器名称
-*	@return	0 打印成功	-1	打印失败
+*	@return	>=0 过滤出的数据包个数	-1 打印失败	
 */
 int CSnifferUIDlg::printListCtrlPacketList(PacketPool &pool, const CString &filter)
 {
 	if (pool.isEmpty() || filter.IsEmpty())
 		return -1;
 		
-	for (int i = 0; i < pool.getSize(); ++i)
+	int pktNum = pool.getSize();
+	int filterPktNum = 0;
+	for (int i = 0; i < pktNum; ++i)
 	{
 		const Packet &pkt = pool.get(i);// BUG：可能有
 		if (pkt.protocol == filter)
+		{
 			printListCtrlPacketList(pkt);
+			++filterPktNum;
+		}
 	}
-	return 0;
+	return filterPktNum;
 }
 
 /**
@@ -607,29 +898,29 @@ int CSnifferUIDlg::printListCtrlPacketList(PacketPool &pool, const CString &filt
 *	@param	pkt	数据包
 *	@return 0 打印成功	-1 打印失败
 */
-int CSnifferUIDlg::printEditCtrlPacketData(const Packet & pkt)
+int CSnifferUIDlg::printEditCtrlPacketBytes(const Packet & pkt)
 {
 	if (pkt.isEmpty())
 	{
 		return -1;
 	}
 
-	CString strPacketData, strTmp;
-	u_char* pHexPacketData = pkt.pkt_data;
-	u_char* pASCIIPacketData = pkt.pkt_data;
-	for (int byteCount = 0,  byteCount16=0, offset = 0; byteCount < pkt.header->caplen && pHexPacketData != NULL; ++byteCount)
+	CString strPacketBytes, strTmp;
+	u_char* pHexPacketBytes = pkt.pkt_data;
+	u_char* pASCIIPacketBytes = pkt.pkt_data;
+	for (int byteCount = 0,  byteCount16=0, offset = 0; byteCount < pkt.header->caplen && pHexPacketBytes != NULL; ++byteCount)
 	{
 		/* 若当前字节是行首，打印行首偏移量 */
 		if (byteCount % 16 == 0)
 		{
 			strTmp.Format("%04X:", offset);
-			strPacketData += strTmp + " ";
+			strPacketBytes += strTmp + " ";
 		}
 
 		/* 打印16进制字节 */
-		strTmp.Format("%02X", *pHexPacketData);
-		strPacketData += strTmp + " ";
-		++pHexPacketData;
+		strTmp.Format("%02X", *pHexPacketBytes);
+		strPacketBytes += strTmp + " ";
+		++pHexPacketBytes;
 		++byteCount16;
 		
 		switch (byteCount16)
@@ -637,8 +928,8 @@ int CSnifferUIDlg::printEditCtrlPacketData(const Packet & pkt)
 		case 8:
 		{
 			/* 每读取8个字节打印一个制表符 */
-			strPacketData += "\t";
-			//strPacketData += "#";
+			strPacketBytes += "\t";
+			//strPacketBytes += "#";
 		}
 		break;
 		case 16:
@@ -646,13 +937,13 @@ int CSnifferUIDlg::printEditCtrlPacketData(const Packet & pkt)
 			/* 每读取16个字节打印对应字节的ASCII字符，只打印字母数字 */
 			if (byteCount16 == 16)
 			{
-				strPacketData += " ";
-				for (int charCount = 0; charCount < 16; ++charCount, ++pASCIIPacketData)
+				strPacketBytes += " ";
+				for (int charCount = 0; charCount < 16; ++charCount, ++pASCIIPacketBytes)
 				{
-					strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
-					strPacketData += strTmp;
+					strTmp.Format("%c", isalnum(*pASCIIPacketBytes) ? *pASCIIPacketBytes : '.');
+					strPacketBytes += strTmp;
 				}
-				strPacketData += "\r\n";
+				strPacketBytes += "\r\n";
 				offset += 16;
 				byteCount16 = 0;
 			}
@@ -667,26 +958,26 @@ int CSnifferUIDlg::printEditCtrlPacketData(const Packet & pkt)
 		/* 空格填充，保证字节流16字节对齐 */
 		for (int spaceCount = 0, byteCount16 = (pkt.header->caplen % 16); spaceCount < 16 - (pkt.header->caplen % 16); ++spaceCount)
 		{
-			strPacketData += "  ";
-			strPacketData += " ";
+			strPacketBytes += "  ";
+			strPacketBytes += " ";
 			++byteCount16;
 			if (byteCount16 == 8)
 			{
-				strPacketData += "\t";
-				//strPacketData += "#";
+				strPacketBytes += "\t";
+				//strPacketBytes += "#";
 			}
 		}
-		strPacketData += " ";
+		strPacketBytes += " ";
 		/* 打印最后一行字节对应的ASCII字符 */
-		for (int charCount = 0; charCount < (pkt.header->caplen % 16); ++charCount, ++pASCIIPacketData)
+		for (int charCount = 0; charCount < (pkt.header->caplen % 16); ++charCount, ++pASCIIPacketBytes)
 		{
-			strTmp.Format("%c", isalnum(*pASCIIPacketData) ? *pASCIIPacketData : '.');
-			strPacketData += strTmp;
+			strTmp.Format("%c", isalnum(*pASCIIPacketBytes) ? *pASCIIPacketBytes : '.');
+			strPacketBytes += strTmp;
 		}
-		strPacketData += "\r\n";
+		strPacketBytes += "\r\n";
 	}
 	
-	m_editCtrlPacketData.SetWindowTextA(strPacketData);
+	m_editCtrlPacketBytes.SetWindowTextA(strPacketBytes);
 
 	return 0;
 }
@@ -696,12 +987,12 @@ int CSnifferUIDlg::printEditCtrlPacketData(const Packet & pkt)
 *	@param	pkt	数据包
 *	@return	0 打印成功	-1 打印失败
 */
-int CSnifferUIDlg::printTreeCtrlPacketInfo(const Packet &pkt)
+int CSnifferUIDlg::printTreeCtrlPacketDetails(const Packet &pkt)
 {
 	if (pkt.isEmpty())
 		return -1;
 
-	m_treeCtrlPacketInfo.DeleteAllItems();
+	m_treeCtrlPacketDetails.DeleteAllItems();
 
 	/* 建立编号结点 */
 	CString strText;
@@ -711,13 +1002,13 @@ int CSnifferUIDlg::printTreeCtrlPacketInfo(const Packet &pkt)
 
 	strText.Format("第%d个数据包（%s, 共 %hu 字节, 捕获 %hu 字节）",  pkt.num, strPktArrivalTime, pkt.header->len, pkt.header->caplen);
 
-	HTREEITEM rootNode = m_treeCtrlPacketInfo.InsertItem(strText, TVI_ROOT);
+	HTREEITEM rootNode = m_treeCtrlPacketDetails.InsertItem(strText, TVI_ROOT);
 	if (pkt.ethh != NULL)
 	{
 		printEthernet2TreeCtrl(pkt, rootNode);
 	}
 
-	m_treeCtrlPacketInfo.Expand(rootNode, TVE_EXPAND);
+	m_treeCtrlPacketDetails.Expand(rootNode, TVE_EXPAND);
 	return 0;
 }
 
@@ -739,11 +1030,11 @@ int CSnifferUIDlg::printEthernet2TreeCtrl(const Packet &pkt, HTREEITEM &parentNo
 	CString strEthType;
 	strEthType.Format("0x%04X", ntohs(pkt.ethh->eth_type));
 
-	HTREEITEM	EthNode = m_treeCtrlPacketInfo.InsertItem( "以太网（" + strSrcMAC + " -> " + strDstMAC + "）", parentNode, 0);
+	HTREEITEM	EthNode = m_treeCtrlPacketDetails.InsertItem( "以太网（" + strSrcMAC + " -> " + strDstMAC + "）", parentNode, 0);
 
-	m_treeCtrlPacketInfo.InsertItem("目的MAC地址：" + strDstMAC, EthNode, 0);
-	m_treeCtrlPacketInfo.InsertItem("源MAC地址：" + strSrcMAC, EthNode, 0);
-	m_treeCtrlPacketInfo.InsertItem("类型：" + strEthType, EthNode, 0);
+	m_treeCtrlPacketDetails.InsertItem("目的MAC地址：" + strDstMAC, EthNode, 0);
+	m_treeCtrlPacketDetails.InsertItem("源MAC地址：" + strSrcMAC, EthNode, 0);
+	m_treeCtrlPacketDetails.InsertItem("类型：" + strEthType, EthNode, 0);
 
 	if (pkt.iph != NULL)
 	{
@@ -767,41 +1058,41 @@ int CSnifferUIDlg::printIP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	if (pkt.isEmpty() || pkt.iph == NULL || parentNode == NULL)
 		return -1;
 
-	HTREEITEM IPNode = m_treeCtrlPacketInfo.InsertItem("IP（" + IPAddr2CString(pkt.iph->srcaddr) + " -> " + IPAddr2CString(pkt.iph->dstaddr) + "）", parentNode, 0);
+	HTREEITEM IPNode = m_treeCtrlPacketDetails.InsertItem("IP（" + IPAddr2CString(pkt.iph->srcaddr) + " -> " + IPAddr2CString(pkt.iph->dstaddr) + "）", parentNode, 0);
 	CString strText;
 
 	strText.Format("版本号：%d", pkt.iph->ver_headerlen >> 4);
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("首部长度：%d 字节（%d）", pkt.getIPHeaderLegnth(), pkt.getIPHeaderLengthRaw());
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("服务质量：0x%02X", pkt.iph->tos);
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("总长度：%hu", ntohs(pkt.iph->totallen));
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("标识：0x%04hX（%hu）", ntohs(pkt.iph->identifier), ntohs(pkt.iph->identifier));
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 				
 	strText.Format("标志：0x%02X", pkt.getIPFlags());
-	HTREEITEM IPFlagNode = m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	HTREEITEM IPFlagNode = m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText = "RSV：0";
-	m_treeCtrlPacketInfo.InsertItem(strText, IPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPFlagNode, 0);
 	
 	strText.Format("DF：%d", pkt.getIPFlagDF());
-	m_treeCtrlPacketInfo.InsertItem(strText, IPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPFlagNode, 0);
 
 	strText.Format("MF：%d", pkt.getIPFlagsMF());
-	m_treeCtrlPacketInfo.InsertItem(strText, IPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPFlagNode, 0);
 	
 	strText.Format("片偏移：%d", pkt.getIPOffset());
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("TTL：%u", pkt.iph->ttl);
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	switch(pkt.iph->protocol)
 	{
@@ -810,16 +1101,16 @@ int CSnifferUIDlg::printIP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	case PROTOCOL_UDP:	strText = "协议：UDP（17）";	break;
 	default:			strText.Format("协议：未知（%d）", pkt.iph->protocol);	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText.Format("校验和：0x%02hX", ntohs(pkt.iph->checksum));
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText = "源IP地址：" + IPAddr2CString(pkt.iph->srcaddr);
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	strText = "目的IP地址：" + IPAddr2CString(pkt.iph->dstaddr);
-	m_treeCtrlPacketInfo.InsertItem(strText, IPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, IPNode, 0);
 	
 	if (pkt.icmph != NULL)
 	{
@@ -856,19 +1147,19 @@ int CSnifferUIDlg::printARP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	case ARP_OPCODE_REPLY:	strText.Format("ARP（响应)");	break;
 	default:				strText.Format("ARP");			break;
 	}	
-	ARPNode= m_treeCtrlPacketInfo.InsertItem(strText, 0, 0, parentNode, 0);
+	ARPNode= m_treeCtrlPacketDetails.InsertItem(strText, 0, 0, parentNode, 0);
 	
 	strText.Format("硬件类型：%hu", ntohs(pkt.arph->hwtype));
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText.Format("协议类型：0x%04hx (%hu)", ntohs(pkt.arph->ptype), ntohs(pkt.arph->ptype));
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText.Format("硬件地址长度：%u", pkt.arph->hwlen);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText.Format("协议地址长度：%u", pkt.arph->plen);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	switch(ntohs(pkt.arph->opcode))
 	{
@@ -876,19 +1167,19 @@ int CSnifferUIDlg::printARP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	case ARP_OPCODE_REPLY:	strText.Format("OP码：响应（%hu）", ntohs(pkt.arph->opcode));	break;
 	default:				strText.Format("OP码：未知（%hu）", ntohs(pkt.arph->opcode));	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText = "源MAC地址：" + MACAddr2CString(pkt.arph->srcmac);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText = "源IP地址：" + IPAddr2CString(pkt.arph->srcip);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 			
 	strText = "目的MAC地址：" + MACAddr2CString(pkt.arph->dstmac);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	strText = "目的IP地址：" + IPAddr2CString(pkt.arph->dstip);
-	m_treeCtrlPacketInfo.InsertItem(strText, ARPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ARPNode, 0);
 	
 	return 0;
 }
@@ -924,30 +1215,30 @@ int CSnifferUIDlg::printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		default:									strTmp.Format("（未知）");			break;
 	}
 	strText += strTmp;
-	ICMPNode = m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	ICMPNode = m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 	
 	IP_Address addr = *(IP_Address*)&(pkt.icmph->others);
 	u_short id = pkt.getICMPID();
 	u_short seq = pkt.getICMPSeq();
 	
 	strText.Format("类型：%u", pkt.icmph->type);
-	m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 	switch(pkt.icmph->type)
 	{
 		case ICMP_TYPE_ECHO_REPLY:
 		{
 			strText = "代码：0";
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("校验和:0x%04hX", ntohs(pkt.icmph->chksum));
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("标识：%hu", id);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("序号：%hu", seq);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			break;
 		}
@@ -985,18 +1276,18 @@ int CSnifferUIDlg::printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 					strText.Format("未知 （%d）", pkt.icmph->code); break;
 			}
 			strText += strTmp;
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 	
 			strText.Format("校验和：0x%04hX", ntohs(pkt.icmph->chksum));
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 			break;
 	
 		case ICMP_TYPE_SOURCE_QUENCH : 
 			strText.Format("代码：%d", ICMP_TYPE_SOURCE_QUENCH_CODE);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 				
 			strText.Format("校验和：0x%04hX", ntohs(pkt.icmph->chksum));
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 			break;
 	
 		case ICMP_TYPE_REDIRECT: 
@@ -1020,27 +1311,27 @@ int CSnifferUIDlg::printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 					break;
 				}
 				strText += strTmp;
-				m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 	
 				strText.Format("校验和：0x%04hx", ntohs(pkt.icmph->chksum));
-				m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 	
 				strText = "目标路由器的IP地址：" + IPAddr2CString(addr);
-				m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 				break;
 
 		case ICMP_TYPE_ECHO:
 			strText.Format("代码：%d", pkt.icmph->code);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("校验和：0x%04hX", ntohs(pkt.icmph->chksum));
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("标识：%hu", id);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 
 			strText.Format("序号：%hu", seq);
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 			break;
 
 		case ICMP_TYPE_TIME_EXCEEDED: 
@@ -1055,19 +1346,19 @@ int CSnifferUIDlg::printICMP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 					break;
 			}
 			strText += strTmp;
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 	
 			strText.Format("校验和：0x%04hx", ntohs(pkt.icmph->chksum));
-			m_treeCtrlPacketInfo.InsertItem(strText, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, ICMPNode, 0);
 	
 			break;
 	
 		default: 
 			strText.Format("代码：%d", pkt.icmph->code);
-			m_treeCtrlPacketInfo.InsertItem(strText, 0, 0, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, 0, 0, ICMPNode, 0);
 
 			strText.Format("校验和：0x%04hX", pkt.icmph->chksum);
-			m_treeCtrlPacketInfo.InsertItem(strText, 0, 0, ICMPNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, 0, 0, ICMPNode, 0);
 
 			break;
 		}
@@ -1090,52 +1381,52 @@ int CSnifferUIDlg::printTCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	CString strText, strTmp;
 							
 	strText.Format("TCP（%hu -> %hu）", ntohs(pkt.tcph->srcport), ntohs(pkt.tcph->dstport));
-	TCPNode = m_treeCtrlPacketInfo.InsertItem(strText,parentNode, 0);
+	TCPNode = m_treeCtrlPacketDetails.InsertItem(strText,parentNode, 0);
 							
 	strText.Format("源端口：%hu", ntohs(pkt.tcph->srcport));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("目的端口：%hu", ntohs(pkt.tcph->dstport));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("序列号：0x%0lX", ntohl(pkt.tcph->seq));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("确认号：0x%0lX", ntohl(pkt.tcph->ack));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("首部长度：%d 字节（%d）", pkt.getTCPHeaderLength(), pkt.getTCPHeaderLengthRaw());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("标志：0x%03X", pkt.getTCPFlags());
-	HTREEITEM TCPFlagNode = m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	HTREEITEM TCPFlagNode = m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("URG：%d", pkt.getTCPFlagsURG());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 							
 	strText.Format("ACK：%d", pkt.getTCPFlagsACK());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 							
 	strText.Format("PSH：%d", pkt.getTCPFlagsPSH());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 							
 	strText.Format("RST：%d", pkt.getTCPFlagsRST());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 
 	strText.Format("SYN：%d", pkt.getTCPFlagsSYN());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 							
 	strText.Format("FIN：%d", pkt.getTCPFlagsFIN());
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPFlagNode, 0);
 							 
 	strText.Format("窗口大小：%hu", ntohs(pkt.tcph->win_size));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("校验和：0x%04hX", ntohs(pkt.tcph->chksum));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 							
 	strText.Format("紧急指针：%hu", ntohs(pkt.tcph->urg_ptr));
-	m_treeCtrlPacketInfo.InsertItem(strText, TCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, TCPNode, 0);
 
 	if (pkt.dnsh != NULL)
 	{
@@ -1169,19 +1460,19 @@ int CSnifferUIDlg::printUDP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode)
 	CString strText, strTmp;
 							
 	strText.Format("UDP（%hu -> %hu）", ntohs(pkt.udph->srcport), ntohs(pkt.udph->dstport));
-	UDPNode = m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	UDPNode = m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 							
 	strText.Format("源端口：%hu", ntohs(pkt.udph->srcport));
-	m_treeCtrlPacketInfo.InsertItem(strText, UDPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, UDPNode, 0);
 							
 	strText.Format("目的端口：%hu", ntohs(pkt.udph->dstport));
-	m_treeCtrlPacketInfo.InsertItem(strText, UDPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, UDPNode, 0);
 							
 	strText.Format("长度：%hu", ntohs(pkt.udph->len));
-	m_treeCtrlPacketInfo.InsertItem(strText, UDPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, UDPNode, 0);
 							
 	strText.Format("校验和：0x%04hX", ntohs(pkt.udph->checksum));
-	m_treeCtrlPacketInfo.InsertItem(strText, UDPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, UDPNode, 0);
 
 	if (pkt.dnsh != NULL)
 	{
@@ -1213,7 +1504,7 @@ HTREEITEM CSnifferUIDlg::printDNSBanner(const Packet &pkt, HTREEITEM &parentNode
 	case DNS_FLAGS_QR_REQUEST:	strText = "DNS（请求）";		break;
 	case DNS_FLAGS_QR_REPLY:	strText = "DNS（响应）";		break;
 	}
-	return m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	return m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 }
 
 
@@ -1231,19 +1522,19 @@ int CSnifferUIDlg::printDNSHeader(const Packet &pkt, HTREEITEM & parentNode)
 	}
 	CString strText, strTmp;
 	strText.Format("标识：0x%04hX (%hu)", ntohs(pkt.dnsh->identifier), ntohs(pkt.dnsh->identifier));
-	m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	strText.Format("标志：0x%04hX", ntohs(pkt.dnsh->flags));
 	strText += strTmp;
 
-	HTREEITEM DNSFlagNode = m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	HTREEITEM DNSFlagNode = m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 	/* 标志子字段 */
 	switch (pkt.getDNSFlagsQR())
 	{
 	case DNS_FLAGS_QR_REQUEST:	strText = "QR：; 查询报文 （0）";	break;
 	case DNS_FLAGS_QR_REPLY:	strText = "QR：; 响应报文 （1）";	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	switch (pkt.getDNSFlagsOPCODE())
 	{
@@ -1251,14 +1542,14 @@ int CSnifferUIDlg::printDNSHeader(const Packet &pkt, HTREEITEM & parentNode)
 	case DNS_FLAGS_OPCODE_INVERSE_QUERY:			strText = "OPCODE：反向查询 （1）";			break;
 	case DNS_FLAGS_OPCODE_SERVER_STATUS_REQUEST:	strText = "OPCODE：服务器状态请求 （2）";	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	switch (pkt.getDNSFlagsAA())
 	{
 	case 0:	strText = "AA：非授权回答 （0）";	break;
 	case 1: strText = "AA：授权回答 （1）";		break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 
 	switch (pkt.getDNSFlagsTC())
@@ -1266,7 +1557,7 @@ int CSnifferUIDlg::printDNSHeader(const Packet &pkt, HTREEITEM & parentNode)
 	case 0: strText = "TC：报文未截断 （0）";	break;
 	case 1: strText = "TC：报文截断 （1）";		break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 
 	switch (pkt.getDNSFlagsRD())
@@ -1274,17 +1565,17 @@ int CSnifferUIDlg::printDNSHeader(const Packet &pkt, HTREEITEM & parentNode)
 	case 0: strText = "RD：0";						break;
 	case 1: strText = "RD：希望进行递归查询 （1）";	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	switch (pkt.getDNSFlagsRA())
 	{
 	case 0: strText = "RA：服务器不支持递归查询 （0）"; break;
 	case 1: strText = "RA：服务器支持递归查询 （1）";	break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	strText.Format("Z：保留（%d）", pkt.getDNSFlagsZ());
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	switch (pkt.getDNSFlagsRCODE())
 	{
@@ -1296,19 +1587,19 @@ int CSnifferUIDlg::printDNSHeader(const Packet &pkt, HTREEITEM & parentNode)
 	case DNS_FLAGS_RCODE_REFUSED:			strText = "RCODE：在管理上禁止 （5）";						 break;
 	default:								strText.Format("RCODE：保留（%d）", pkt.getDNSFlagsRCODE()); break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DNSFlagNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DNSFlagNode, 0);
 
 	strText.Format("查询记录数：%hu", ntohs(pkt.dnsh->questions));
-	m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	strText.Format("回答记录数：%hu", ntohs(pkt.dnsh->answer_RRs));
-	m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	strText.Format("授权回答记录数：%hu", ntohs(pkt.dnsh->authority_RRs));
-	m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	strText.Format("附加信息记录数：%hu", ntohs(pkt.dnsh->additional_RRs));
-	m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	return 0;
 }
@@ -1369,7 +1660,7 @@ int CSnifferUIDlg::printDNSQuery(char *DNSQuery, const u_short &questions, HTREE
 		return -1;
 	}
 	CString strText, strTmp;
-	HTREEITEM DNSQueryNode = m_treeCtrlPacketInfo.InsertItem("查询部分：", parentNode, 0);
+	HTREEITEM DNSQueryNode = m_treeCtrlPacketDetails.InsertItem("查询部分：", parentNode, 0);
 
 	/* 查询部分 */
 	
@@ -1388,7 +1679,7 @@ int CSnifferUIDlg::printDNSQuery(char *DNSQuery, const u_short &questions, HTREE
 			DNS_Query *DNSQuery = (DNS_Query*)p;
 			strText += DNSType2CString(DNSQuery->type) + ", ";
 			strText += DNSClass2CString(DNSQuery->classes);
-			m_treeCtrlPacketInfo.InsertItem(strText, DNSQueryNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DNSQueryNode, 0);
 
 			/* 跳过查询类型和查询类字段 */
 			p += sizeof(DNS_Query);		
@@ -1412,7 +1703,7 @@ int CSnifferUIDlg::printDNSQuery(char *DNSQuery, const u_short &questions, HTREE
 //		return -1;
 //	}
 //	CString strText, strTmp;
-//	HTREEITEM DNSAnswerNode = m_treeCtrlPacketInfo.InsertItem("回答部分：", parentNode, 0);
+//	HTREEITEM DNSAnswerNode = m_treeCtrlPacketDetails.InsertItem("回答部分：", parentNode, 0);
 //
 //	int answerNum = 0, byteCounter = 0;
 //	char *p = DNSAnswer;
@@ -1558,7 +1849,7 @@ int CSnifferUIDlg::printDNSQuery(char *DNSQuery, const u_short &questions, HTREE
 //				strText += IPAddr2CString(data);
 //			}
 //
-//			m_treeCtrlPacketInfo.InsertItem(strText, DNSAnswerNode, 0);
+//			m_treeCtrlPacketDetails.InsertItem(strText, DNSAnswerNode, 0);
 //
 //			/* 跳过数据部分 */
 //			p += data_len;
@@ -1594,7 +1885,7 @@ int CSnifferUIDlg::printDNSResourceRecord(char *DNSResourceRecord, const u_short
 	case DNS_RESOURCE_RECORD_TYPE_AUTHORITY:	strText = "授权回答部分：";	break;
 	case DNS_RESOURCE_RECORD_TYPE_ADDITIONAL:	strText = "附加信息部分：";	break;
 	}
-	HTREEITEM DNSResourceRecordNode = m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	HTREEITEM DNSResourceRecordNode = m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 
 	for (int count = 0; count < 1; ++count) //count < resourceRecordNum; ++count)
 	{
@@ -1650,7 +1941,7 @@ int CSnifferUIDlg::printDNSResourceRecord(char *DNSResourceRecord, const u_short
 
 			CString strCName = getNameInDNS(p, pDNSHeader);
 			strText += "别名：" + strCName;
-			//m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+			//m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 			//free(cname);
 			break;
 		}
@@ -1671,7 +1962,7 @@ int CSnifferUIDlg::printDNSResourceRecord(char *DNSResourceRecord, const u_short
 			strText += strTmp;*/
 			break;
 		}
-		m_treeCtrlPacketInfo.InsertItem(strText, DNSResourceRecordNode, 0);
+		m_treeCtrlPacketDetails.InsertItem(strText, DNSResourceRecordNode, 0);
 
 	}// for
 	return p - DNSResourceRecord + 1;
@@ -1736,26 +2027,26 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		return -1;
 	}
 
-	HTREEITEM DHCPNode = m_treeCtrlPacketInfo.InsertItem("DHCP", parentNode, 0);
+	HTREEITEM DHCPNode = m_treeCtrlPacketDetails.InsertItem("DHCP", parentNode, 0);
 	CString strText, strTmp;
 	/* 解析dhcp首部 */
 	strText.Format("报文类型：%d", pkt.dhcph->op);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText.Format("硬件类型：%d", pkt.dhcph->htype);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText.Format("硬件地址长度：%d", pkt.dhcph->hlen);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 	strText.Format("跳数：%d",pkt.dhcph->hops);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText.Format("事务ID：0x%08lX", ntohl(pkt.dhcph->xid));
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText.Format("客户启动时间：%hu", ntohs(pkt.dhcph->secs));
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText.Format("标志：0x%04hX", ntohs(pkt.dhcph->flags));
 	switch(ntohs(pkt.dhcph->flags) >> 15)
@@ -1763,19 +2054,19 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 	case DHCP_FLAGS_BROADCAST: strText += "（广播）"; break;
 	case DHCP_FLAGS_UNICAST: strText += "（单播）"; break;
 	}
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "客户机IP地址：" + IPAddr2CString(pkt.dhcph->ciaddr);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "你的（客户）IP地址：" + IPAddr2CString(pkt.dhcph->yiaddr);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "服务器IP地址：" + IPAddr2CString(pkt.dhcph->siaddr);;
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "网关IP地址：" + IPAddr2CString(pkt.dhcph->giaddr);
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	/*  解析dhcp首部剩余部分 */
 	CString strChaddr;
@@ -1787,17 +2078,17 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 	strChaddr.Delete(strChaddr.GetLength() - 1, 1);
 
 	strText = "客户机MAC地址：" + strChaddr;
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "服务器主机名：";
 	strTmp.Format("%s", pkt.dhcph->snamer);
 	strText += strTmp;
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	strText = "引导文件名：";
 	strTmp.Format("%s", pkt.dhcph->file);
 	strText += strTmp;
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	
 	// 跳过引导文件名
 	u_char *p = (u_char*)pkt.dhcph->file + 128;
@@ -1805,7 +2096,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 	if(ntohl(*(u_long*)p) == 0x63825363)
 	{
 		strText = "Magic cookie: DHCP";
-		m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+		m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 	}
 	
 	// 跳过magic cookie
@@ -1829,13 +2120,13 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 			case 7: strText += "（Release）"; break;
 			case 8: strText += "（Inform）"; break;
 			}
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			strText.Format("长度：%d", *(++p));
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			strText.Format("DHCP：%d", *(++p));
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			// 指向下一个选项
 			++p;
@@ -1845,14 +2136,14 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_REQUESTED_IP_ADDRESS:
 		{
 			strText = "选项：（50）请求IP地址";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			strText.Format("长度：%d", *(++p));
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			IP_Address *addr = (IP_Address*)(++p);
 			strText = "地址：" + IPAddr2CString(*addr);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			// 指向下一个选项
 			p += 4;
@@ -1862,14 +2153,14 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_IP_ADDRESS_LEASE_TIME:
 		{
 			strText = "选项：（51）IP地址租约时间";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			strText.Format("长度：%d", *(++p));
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			u_int time = *(++p);
 			strText.Format("租约时间：%u", time);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			// 指向下一个选项
 			p += 4;
@@ -1879,21 +2170,21 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_CLIENT_IDENTIFIER:
 		{
 			strText = "选项：（61）客户机标识";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			strText = "硬件类型：";
 			if (*(++p) == 0x01)
 			{
 				strText += "以太网（0x01）";
-				m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 				MAC_Address *addr = (MAC_Address*)(++p);
 				strText = "客户机标识：" + MACAddr2CString(*addr);
-				m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 				p += 6;
 			}
@@ -1901,7 +2192,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 			{
 				strText.Format("%d", *p);
 				strText += strTmp;
-				m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 				p += len;
 			}
@@ -1911,11 +2202,11 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_VENDOR_CLASS_IDENTIFIER:
 		{
 			strText = "选项：（60）供应商类标识";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			int count = 0;
 			strText = "供应商类标识：";
@@ -1924,7 +2215,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 				strTmp.Format("%c", *(++p));
 				strText += strTmp;
 			}
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			++p;
 		}
@@ -1933,15 +2224,15 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_SERVER_IDENTIFIER:
 		{
 			strText = "选项：（54）服务器标识";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			IP_Address *addr = (IP_Address*)(++p);
 			strText = "服务器标识：" + IPAddr2CString(*addr);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			p += 4;
 		}
@@ -1952,15 +2243,15 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 
 		
 			strText = "选项：（1）子网掩码";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			IP_Address *submask = (IP_Address*)(++p);
 			strText = "子网掩码：" + IPAddr2CString(*submask);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			p += 4;
 		}
@@ -1971,18 +2262,18 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 
 		
 			strText = "选项：（3）路由器";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			int count = 0;
 			while (count < len)
 			{
 				IP_Address *addr = (IP_Address*)(++p);
 				strText = "路由器：" + IPAddr2CString(*addr);
-				m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 				count += 4;
 				p += 4;
@@ -1993,11 +2284,11 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_DOMAIN_NAME_SERVER_OPTION: 
 		{
 			strText = "选项：（6）DNS服务器";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			int count = 0;
 			++p;
@@ -2005,7 +2296,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 			{
 				IP_Address *addr = (IP_Address*)(p);
 				strText = "DNS服务器：" + IPAddr2CString(*addr);
-				m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+				m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 				count += 4;
 				p += 4;
@@ -2017,11 +2308,11 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		case DHCP_OPTIONS_HOST_NAME_OPTION:
 		{
 			strText = "选项：（12）主机名";
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			int count = 0;
 			strText = "主机名：";
@@ -2031,7 +2322,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 				strTmp.Format("%c", *(++p));
 				strText += strTmp;
 			}
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			++p;
 		}
@@ -2044,11 +2335,11 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 		default:
 		{
 			strText.Format("选项：（%d）", *p);
-			HTREEITEM DHCPOptionNode = m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);
+			HTREEITEM DHCPOptionNode = m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);
 
 			int len = *(++p);
 			strText.Format("长度：%d", len);
-			m_treeCtrlPacketInfo.InsertItem(strText, DHCPOptionNode, 0);
+			m_treeCtrlPacketDetails.InsertItem(strText, DHCPOptionNode, 0);
 
 			// 指向选项内容
 			++p;
@@ -2061,7 +2352,7 @@ int CSnifferUIDlg::printDHCP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 	
 	}// while
 	strText = "选项：（255）结束";
-	m_treeCtrlPacketInfo.InsertItem(strText, DHCPNode, 0);	 
+	m_treeCtrlPacketDetails.InsertItem(strText, DHCPNode, 0);	 
 		
 	return 0;
 }
@@ -2091,7 +2382,7 @@ int CSnifferUIDlg::printHTTP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 	{
 		strText = "HTTP（响应）";
 	}
-	HTREEITEM HTTPNode = m_treeCtrlPacketInfo.InsertItem(strText, parentNode, 0);
+	HTREEITEM HTTPNode = m_treeCtrlPacketDetails.InsertItem(strText, parentNode, 0);
 	
 	for(int count = 0; count < HTTPMsgLen; )
 	{
@@ -2103,7 +2394,7 @@ int CSnifferUIDlg::printHTTP2TreeCtrl(const Packet & pkt, HTREEITEM & parentNode
 			++count;
 		}
 		strText += "\\r\\n";
-		m_treeCtrlPacketInfo.InsertItem(strText, HTTPNode, 0);
+		m_treeCtrlPacketDetails.InsertItem(strText, HTTPNode, 0);
 	
 		p += 2;
 		count += 2;
@@ -2168,8 +2459,8 @@ void CSnifferUIDlg::OnClickedList1(NMHDR* pNMHDR, LRESULT* pResult)
 
 	const Packet &pkt = m_pool.get(pktNum);
 
-	printTreeCtrlPacketInfo(pkt);
-	printEditCtrlPacketData(pkt);
+	printTreeCtrlPacketDetails(pkt);
+	printEditCtrlPacketBytes(pkt);
 }
 
 /**
@@ -2265,22 +2556,35 @@ LRESULT CSnifferUIDlg::OnPktCatchMessage(WPARAM wParam, LPARAM lParam)
 	if (pktNum > 0)
 	{
 		Packet &pkt = m_pool.get(pktNum);
-		/* 检查过滤器是否启动，若启动了，则不打印最新捕获的数据包 */
-		int selIndexOfFilter = m_comboBoxFilterList.GetCurSel();
-		if (selIndexOfFilter > 0)
+		/* 检查过滤器是否启动，若启动了，则只打印符合过滤器的新捕获数据包 */
+		int selFilterIndex = m_comboBoxFilterList.GetCurSel();
+		if (selFilterIndex > 0)
 		{
 			CString strFilter;
-			m_comboBoxFilterList.GetLBText(selIndexOfFilter, strFilter);
+			m_comboBoxFilterList.GetLBText(selFilterIndex, strFilter);
 			if (strFilter == pkt.protocol)
 				printListCtrlPacketList(pkt);
 		}
 		else
 			printListCtrlPacketList(pkt);
 
-		// 修改状态栏 - 数据包
-		CString pktTotalNum;
-		pktTotalNum.Format("数据包：%d", m_pool.getSize());
-		m_statusBar.SetPaneText(1, pktTotalNum, true);
+		// 修改状态栏 - 数据包总数、数据包显示个数
+		//int pktTotalNum = m_pool.getSize();
+		//CString strPktTotalNum;
+		//strPktTotalNum.Format("数据包：%d", pktTotalNum);
+
+		//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
+		//double percentage;
+		//CString strPktDisplayNum;
+		//if (pktDisplayNum == 0 || pktTotalNum == 0)
+		//	percentage = 0.0;
+		//else
+		//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
+		//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
+
+		//m_statusBar.SetPaneText(1, strPktTotalNum, true);
+		//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
+		updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 	}
 
 	return 0;
@@ -2297,10 +2601,56 @@ LRESULT CSnifferUIDlg::OnTExitMessage(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void CSnifferUIDlg::OnUpdateStatus(CCmdUI *pCmdUI)
+/**
+*	@brief	处理工具栏按钮提示
+*	@param	-
+*	@param	-
+*	@return -
+*/
+BOOL CSnifferUIDlg::OnToolTipText(UINT, NMHDR * pNMHDR, LRESULT * pResult)
 {
-	pCmdUI->Enable();
+	TOOLTIPTEXT   *pTTT = (TOOLTIPTEXT*)pNMHDR;
+	UINT  uID = pNMHDR->idFrom;     // 相当于原WM_COMMAND传递方式的wParam（low-order）, 在wParam中放的则是控件的ID。  
+
+	if (pTTT->uFlags  &  TTF_IDISHWND)
+		uID = ::GetDlgCtrlID((HWND)uID);
+	if (uID == NULL)
+		return   FALSE;
+	switch (uID)
+	{
+	case ID_TOOLBARBTN_START:
+		pTTT->lpszText = _T("开始捕获");
+		break;
+
+	case ID_TOOLBARBTN_STOP:
+		pTTT->lpszText = _T("结束捕获");
+		break;
+
+	case ID_MENU_FILE_OPEN:
+		pTTT->lpszText = _T("打开文件");
+		break;
+
+	case ID_MENU_FILE_SAVEAS:
+		pTTT->lpszText = _T("另存为");
+		break;
+
+	case ID_TOOLBARBTN_CLEAR:
+		pTTT->lpszText = _T("清除过滤器");
+		break;
+
+	case ID_TOOLBARBTN_FILTER:
+		pTTT->lpszText = _T("应用过滤器");
+		break;
+	}
+
+	return TRUE;
 }
+
+
+//void CSnifferUIDlg::OnUpdateStatus(CCmdUI *pCmdUI)
+//{
+//	//pCmdUI->Enable();
+//}
 
 /**
 *	@brief	快捷键 - Ctrl + G - 获取数据包列表选中项焦点
@@ -2367,8 +2717,8 @@ void CSnifferUIDlg::OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult)
 		//POSITION pos = g_packetLinkList.FindIndex(pktNum - 1);
 		//Packet &pkt = g_packetLinkList.GetAt(pos);
 		const Packet &pkt = m_pool.get(pktNum);
-		printTreeCtrlPacketInfo(pkt);
-		printEditCtrlPacketData(pkt);
+		printTreeCtrlPacketDetails(pkt);
+		printEditCtrlPacketBytes(pkt);
 	}
 	
 	*pResult = 0;
@@ -2562,18 +2912,6 @@ CString get0xC0PointerValue(const DNS_Header *pDNSHeader, const int offset)
 *		菜单栏实现
 *
 *************************************************************/
-
-/**
-*	@brief	（菜单栏 - 帮助 - 关于）代码实现
-*	@param	-
-*	@return	-
-*/
-void CSnifferUIDlg::OnMenuHelpAbout()
-{
-	CAboutDlg dlg;
-	dlg.DoModal();
-}
-
 /**
 *	@brief	（菜单栏 - 文件 - 打开）代码实现
 *	@param	-
@@ -2591,23 +2929,34 @@ void CSnifferUIDlg::OnMenuFileOpen()
 			AfxMessageBox("无法打开文件" + openFileName + "，请检查文件扩展名");
 			return;
 		}
-		if (m_catcher.openAdapter(openFilePath))
+		if (openFileName == m_openFileName)	// 检查文件名，避免重复打开
 		{
-			CString status = "已打开文件：" + openFileName;
-			m_statusBar.SetPaneText(0, status, true);		// 修改状态栏
-			AfxGetMainWnd()->SetWindowText(openFileName);	// 修改标题栏为打开的文件名
-			m_Menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
-			m_Menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_ENABLED);	// 启用菜单项"关闭"
-			m_Menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+			AfxMessageBox("不能重复打开相同文件" + openFileName);
+			return;
+		}
+		if (m_catcher.openAdapter(openFilePath))	
+		{
+			m_openFileName = openFileName;					// 保存文件名
+			AfxGetMainWnd()->SetWindowText(openFileName);	// 修改标题栏为文件名
+			m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
+			m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_ENABLED);	// 启用菜单项"关闭"
+			m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
+
+			m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_OPEN, TRUE);	// 启用工具栏按钮"打开"
+			m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_SAVEAS, TRUE);	// 启用工具栏按钮"另存为"
 
 			m_listCtrlPacketList.DeleteAllItems();
-			m_treeCtrlPacketInfo.DeleteAllItems();
-			m_editCtrlPacketData.SetWindowTextA("");
-			
+			m_treeCtrlPacketDetails.DeleteAllItems();
+			m_editCtrlPacketBytes.SetWindowTextA("");
 			m_pool.clear();
+
 			m_pktDumper.setPath(openFilePath);
 			m_catcher.startCapture(MODE_CAPTURE_OFFLINE);
 			m_fileOpenFlag = true;
+
+			CString status = "已打开文件：" + openFileName;
+			updateStatusBar(status, -1, -1);
+			//m_statusBar.SetPaneText(0, status, true);		// 修改状态栏
 		}
 	}
 }
@@ -2622,13 +2971,20 @@ void CSnifferUIDlg::OnMenuFileClose()
 	if (m_fileOpenFlag)
 	{
 		AfxGetMainWnd()->SetWindowText("SnifferUI");			// 修改标题栏
-		m_Menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
-		m_Menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
-		m_Menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
+		m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
+		m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
+		m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
+
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_OPEN, TRUE);	// 启用工具栏按钮"打开"
+		m_toolBarMain.GetToolBarCtrl().EnableButton(ID_MENU_FILE_SAVEAS, FALSE);// 禁用工具栏按钮"另存为"
+
 		m_listCtrlPacketList.DeleteAllItems();
-		m_treeCtrlPacketInfo.DeleteAllItems();
-		m_editCtrlPacketData.SetWindowTextA("");
+		m_treeCtrlPacketDetails.DeleteAllItems();
+		m_editCtrlPacketBytes.SetWindowTextA("");
 		m_pool.clear();
+
+		m_openFileName = "";
+		updateStatusBar(CString("就绪"), 0, 0);
 	}
 }
 
@@ -2648,11 +3004,29 @@ void CSnifferUIDlg::OnMenuFileSaveAs()
 	{
 		saveAsFilePath = dlgFile.GetPathName();
 		m_pktDumper.dump(saveAsFilePath);
-		//m_Menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
+		//m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_GRAYED);	// 禁用菜单项"另存为"
 		AfxGetMainWnd()->SetWindowText(dlgFile.GetFileName());		// 修改标题栏
 		m_statusBar.SetPaneText(0, "已保存至：" + saveAsFilePath, true);	// 修改状态栏
 
 	}
+}
+
+/**
+*	@brief	（菜单栏 - 文件 - 清理缓存文件）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnMenuFileClearCache()
+{
+	if (deleteDirectory(".\\tmp\\"))
+	{
+		updateStatusBar("缓存文件已清空", -1, -1);
+	}
+	else
+	{
+		updateStatusBar("无缓存文件可清理", -1, -1);
+	}
+	
 }
 
 /**
@@ -2663,6 +3037,28 @@ void CSnifferUIDlg::OnMenuFileSaveAs()
 void CSnifferUIDlg::OnMenuFileExit()
 {
 	exit(0);
+}
+
+/**
+*	@brief	（菜单栏 - 帮助 - 关于）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnMenuHelpAbout()
+{
+	CAboutDlg dlg;
+	dlg.DoModal();
+}
+
+/**
+*	@brief	（菜单栏 - 帮助 - 快捷键一览）代码实现
+*	@param	-
+*	@return	-
+*/
+void CSnifferUIDlg::OnMenuHelpShortCut()
+{
+	CShortCutDialog dlg;
+	dlg.DoModal();
 }
 /*************************************************************
 *

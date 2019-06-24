@@ -15,32 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SnifferUI.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SnifferUIDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="StdAfx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Packet.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThreadParam.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PacketCatcher.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PacketPool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PacketDumper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -59,25 +33,28 @@
     <ClInclude Include="include\StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\ProtocolHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\PacketCatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PacketDumper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PacketPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ShortCutDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ThreadParam.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\Global.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ThreadParam.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PacketCatcher.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PacketPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PacketDumper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -90,19 +67,61 @@
     <Image Include="res\SnifferUI.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\btnPause.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\btnStart.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\btnStop.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\btnStart.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\toolbar1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\bitmap1.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\net.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\open.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\saveas.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\stop.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\btnStop.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\filter.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\clear.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\test.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\toolbar2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\dev.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\start.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\filterlist.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\GitHub.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\Github.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\Email.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\Sniffer\SnifferUI\res\filter.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
@@ -111,5 +130,34 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="ClassDiagram1.cd" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Packet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketCatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketDumper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PacketPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ShortCutDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SnifferUI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SnifferUIDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadParam.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

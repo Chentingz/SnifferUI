@@ -10,6 +10,12 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+/* 常量 */
+const int BITMAP_LIST_MAIN_SIZE = 5;
+const int BITMAP_LIST_FILTER_SIZE = 3;
+const int BITMAP_WIDTH = 24;
+const int BITMAP_HEIGHT = 24;
+
 /////////////////////////////////////////////////////////////////////////////
 // CSnifferUIDlg dialog
 
@@ -33,26 +39,31 @@ public:
 // Implementation
 protected:
 	/* 控件 */
-	CButton		m_btnStart;
-	CButton		m_btnStop;
-	CButton		m_btnFilter;
-	CButton		m_btnClear;
-	CComboBox	m_comboBoxDevList;
-	CComboBox	m_comboBoxFilterList;
-	CListCtrl	m_listCtrlPacketList;
-	CTreeCtrl	m_treeCtrlPacketInfo;
-	CEdit		m_editCtrlPacketData;
 	//CRichEditCtrl	richEditCtrlFilterInput_;
-	CMenu		m_Menu;
 	HICON		m_hIcon;
 	HACCEL		m_hAccelMenu;
 	HACCEL		m_hAccel;
-	CStatusBar   m_statusBar;
+	CMenu		m_menu;
+	CToolBar	m_toolBarMain;
+	CToolBar	m_toolBarFilter;
+	CFont       m_comboFont;		//标示combobox的字体
+	CComboBox	m_comboBoxDevList;
+	CComboBox	m_comboBoxFilterList;
+	CListCtrl	m_listCtrlPacketList;
+	CTreeCtrl	m_treeCtrlPacketDetails;
+	CEdit		m_editCtrlPacketBytes;
+	CStatusBar  m_statusBar;
 
+	/* 位图资源 */
+	CBitmap		m_bitmapListMain[BITMAP_LIST_MAIN_SIZE];
+	CBitmap		m_bitmapListFilter[BITMAP_LIST_FILTER_SIZE];
+	CImageList	m_imageListMain;
+	CImageList	m_imageListFilter;
 
 	/* 标志 */
 	bool    m_pktCaptureFlag;
 	bool	m_fileOpenFlag;
+	CString m_openFileName;	// 保存打开文件的文件名
 
 	/* 数据包相关类 */
 	PacketCatcher	m_catcher;
@@ -61,15 +72,21 @@ protected:
 	/* 文件相关类 */
 	PacketDumper	m_pktDumper;
 
-	
+
 
 	/* 初始化相关函数 */
 	void initialAccelerator();
-	void initialMenu();
+	void initialMenuBar();
+	void initialToolBar();
 	void initialComboBoxDevList();
 	void initialComboBoxFilterList();
 	void initialListCtrlPacketList();
+	void initialTreeCtrlPacketDetails();
+	void initialEditCtrlPacketBytes();
 	void initialStatusBar();
+
+	void updateStatusBar(const CString &status, int pktTotalNum, int pktDisplayNum);
+	bool deleteDirectory(CString path);
 
 	/* 激活快捷键，添加对快捷键处理的调用 */
 	virtual BOOL  PreTranslateMessage(MSG*  pMsg);
@@ -88,18 +105,20 @@ protected:
 	afx_msg void OnCustomdrawList1(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg LRESULT OnPktCatchMessage(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnTExitMessage(WPARAM wParam, LPARAM lParam);
-
-	//}}AFX_MSG
-	DECLARE_MESSAGE_MAP()
-public:
+	afx_msg BOOL OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult);  // 工具条提示  
 	afx_msg void OnKeydownList1(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnMenuFileOpen();
 	afx_msg void OnMenuFileClose();
 	afx_msg void OnMenuFileSaveAs();
+	afx_msg void OnMenuFileClearCache();
 	afx_msg void OnMenuFileExit();
+	afx_msg void OnMenuHelpShortCut();
 	afx_msg void OnMenuHelpAbout();
-	afx_msg void OnUpdateStatus(CCmdUI *pCmdUI);
+	//afx_msg void OnUpdateStatus(CCmdUI *pCmdUI);
 	afx_msg void OnAcceleratorCtrlG();
+	//}}AFX_MSG
+	DECLARE_MESSAGE_MAP()
+public:
 
 	/* 控件打印相关函数 */
 	int printListCtrlPacketList(const Packet &pkt);
@@ -107,9 +126,9 @@ public:
 	int printListCtrlPacketList(PacketPool &pool, const CString &filter);
 
 
-	int	printEditCtrlPacketData(const Packet &pkt);
+	int	printEditCtrlPacketBytes(const Packet &pkt);
 
-	int printTreeCtrlPacketInfo(const Packet &pkt);
+	int printTreeCtrlPacketDetails(const Packet &pkt);
 	int printEthernet2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
 	int	printIP2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
 	int	printARP2TreeCtrl(const Packet &pkt, HTREEITEM &parentNode);
