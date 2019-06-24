@@ -1,7 +1,7 @@
 <table>
   <tr>
     <th>
-      <img src="https://github.com/Chentingz/SnifferUI/blob/master/SnifferUI/res/SnifferUI.ico" width = 48 height = 48 />
+      <img src="https://github.com/Chentingz/SnifferUI/blob/master/SnifferUI/res/SnifferUI.ico" width = 64 height = 64 />
     </th>
     <th>
       <h1>SnifferUI</h1>
