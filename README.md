@@ -15,7 +15,7 @@
   - [v1.0](#v10)
 - [更新说明](#更新说明)
 - [ToDoList](#todolist)
-- [Known Bug](#known-bug)
+- [Known Issues](#known-issues)
 - [参考资料](#参考资料)
 
 ## 功能
