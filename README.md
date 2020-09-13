@@ -108,6 +108,7 @@
 - [x] 数据包16进制字节流格式不对齐  
 - [x] 按下结束后再开始，界面卡死  
 - [x] 使用过滤器后，若线程仍在抓包，新抓到的的数据包没有过滤就打印
+- [ ] 读取大pcap文件时，内存占用率高甚至出现程序崩溃 [#2](https://github.com/Chentingz/SnifferUI/issues/2)
 
 ## 参考资料
 * [一步一步开发sniffer（Winpcap+MFC）（一）工欲善其事，必先配环境——配置winpcap开发环境](https://blog.csdn.net/litingli/article/details/5950962)
