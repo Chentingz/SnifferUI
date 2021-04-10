@@ -190,4 +190,5 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
 
 	// 发送消息给主窗口SnifferUIDlg
 	PostMessage(AfxGetMainWnd()->m_hWnd, WM_PKTCATCH, NULL, (LPARAM)(threadParam->m_pool->getLast().num));
+	Sleep(500);
 }
