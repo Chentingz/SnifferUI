@@ -300,7 +300,7 @@ IDB_BITMAP_SAVEAS       BITMAP                  "res\\saveas.bmp"
 
 IDB_BITMAP_STOP         BITMAP                  "res\\stop.bmp"
 
-IDB_BITMAP_FILTER       BITMAP                  "E:\\Code\\Sniffer\\SnifferUI\\res\\filter.bmp"
+IDB_BITMAP_FILTER       BITMAP                  "res\\filter.bmp"
 
 IDB_BITMAP_CLEAR        BITMAP                  "res\\clear.bmp"
 
