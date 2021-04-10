@@ -72,8 +72,6 @@ protected:
 	/* 文件相关类 */
 	PacketDumper	m_pktDumper;
 
-
-
 	/* 初始化相关函数 */
 	void initialAccelerator();
 	void initialMenuBar();
@@ -86,8 +84,11 @@ protected:
 	void initialStatusBar();
 
 	void updateStatusBar(const CString &status, int pktTotalNum, int pktDisplayNum);
-	bool deleteDirectory(CString path);
-
+	
+	/* 文件夹操作相关函数 */
+	bool createDirectory(const CString& dirPath);
+	bool clearDirectory(const CString& dirPath);
+	
 	/* 激活快捷键，添加对快捷键处理的调用 */
 	virtual BOOL  PreTranslateMessage(MSG*  pMsg);
 
@@ -125,7 +126,6 @@ public:
 	int printListCtrlPacketList(PacketPool &pool);
 	int printListCtrlPacketList(PacketPool &pool, const CString &filter);
 
-
 	int	printEditCtrlPacketBytes(const Packet &pkt);
 
 	int printTreeCtrlPacketDetails(const Packet &pkt);
@@ -145,7 +145,6 @@ public:
 	CString DNSClass2CString(const u_short &classes);
 	int printDNSQuery(char *DNSQuery, const u_short &questions, HTREEITEM &parentNode);
 	int printDNSResourceRecord(char *DNSResourceRecord, const u_short &resourceRecordNum, const int &resourceRecordType, const DNS_Header *pDNSHeader, HTREEITEM parentNode);
-
 
 	/* 转换 */
 	CString	MACAddr2CString(const MAC_Address &addr);

@@ -222,6 +222,8 @@ BOOL CSnifferUIDlg::OnInitDialog()
 	initialTreeCtrlPacketDetails();		// 树形控件（数据包详情）初始化
 	initialEditCtrlPacketBytes();		// 编辑控件（数据包字节流）初始化
 	initialStatusBar();					// 状态栏初始化
+	createDirectory(".\\tmp");			// 判断tmp文件夹是否存在，不存在则创建
+	
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -741,19 +743,35 @@ void CSnifferUIDlg::updateStatusBar(const CString & status, int pktTotalNum, int
 		m_statusBar.SetPaneText(index, text, TRUE);
 	}
 }
+
 /**
-*	@brief	删除指定文件夹中所有pcap文件
+*	@brief	在指定路径上创建文件夹
 *	@param [in]	dirPath	 文件夹路径
-*	@return	-
+*	@return	true 创建成功 false 创建失败（文件夹已存在）
 */
-bool CSnifferUIDlg::deleteDirectory(CString dirPath)
+bool CSnifferUIDlg::createDirectory(const CString& dirPath)
+{
+	if (!PathIsDirectory(dirPath.GetString()))  // 是否有重名文件夹
+	{
+		::CreateDirectory(dirPath.GetString(), 0);
+		return true;
+	}
+	return false;
+}
+
+/**
+*	@brief	清空指定文件夹中所有文件
+*	@param [in]	dirPath	 文件夹路径
+*	@return	true 清空成功 false 清空失败
+*/
+bool CSnifferUIDlg::clearDirectory(const CString& dirPath)
 {
 		CFileFind finder;
 		//TCHAR sTempFileFind[MAX_PATH] = { 0 };
 		//wsprintf(sTempFileFind, _T("%s\\*.pcap"), path);
 
 		CString path(dirPath);
-		path += _T("\\*.pcap");
+		path += _T("\\*.*");
 
 		BOOL isFound = finder.FindFile(path);
 		if (!isFound)
@@ -772,7 +790,7 @@ bool CSnifferUIDlg::deleteDirectory(CString dirPath)
 			if (finder.IsDirectory())
 			{
 				CString subDirPath = dirPath + finder.GetFileName();
-				deleteDirectory(subDirPath); //删除文件夹下的文件
+				clearDirectory(subDirPath); //删除文件夹下的文件
 				RemoveDirectory(subDirPath); //移除空文件
 			}
 			else
@@ -784,6 +802,7 @@ bool CSnifferUIDlg::deleteDirectory(CString dirPath)
 		finder.Close();
 		return true;
 }
+
 /**
 *	@brief	打印数据包概要信息到列表控件
 *	@param	数据包
@@ -3018,7 +3037,7 @@ void CSnifferUIDlg::OnMenuFileSaveAs()
 */
 void CSnifferUIDlg::OnMenuFileClearCache()
 {
-	if (deleteDirectory(".\\tmp\\"))
+	if (clearDirectory(".\\tmp\\"))
 	{
 		updateStatusBar("缓存文件已清空", -1, -1);
 	}
