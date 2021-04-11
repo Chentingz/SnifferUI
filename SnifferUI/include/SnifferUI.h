@@ -13,8 +13,7 @@
 #endif
 
 #include "resource.h"		// main symbols
-#include "PacketCatcher.h"
-#include "PacketPool.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // CSnifferUIApp:
 // See SnifferUI.cpp for the implementation of this class
