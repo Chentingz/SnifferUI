@@ -3,6 +3,8 @@
 
 #include "afxwin.h"
 #include "PacketDumper.h"
+#include "PacketCatcher.h"
+#include "PacketPool.h"
 #if !defined(AFX_SNIFFERUIDLG_H__22E6FA67_26EB_4787_8108_560D03B16680__INCLUDED_)
 #define AFX_SNIFFERUIDLG_H__22E6FA67_26EB_4787_8108_560D03B16680__INCLUDED_
 
