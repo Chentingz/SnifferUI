@@ -5,4 +5,7 @@
     </LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup>
+    <RESOURCE_FILE>SnifferUI.rc</RESOURCE_FILE>
+  </PropertyGroup>
 </Project>

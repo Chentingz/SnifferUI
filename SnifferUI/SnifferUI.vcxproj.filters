@@ -30,9 +30,6 @@
     <ClInclude Include="include\SnifferUIDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\StdAfx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\ProtocolHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -51,10 +48,13 @@
     <ClInclude Include="include\ThreadParam.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\resource.h">
+    <ClInclude Include="include\Global.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Global.h">
+    <ClInclude Include="StdAfx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -153,10 +153,10 @@
     <ClCompile Include="SnifferUIDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="StdAfx.cpp">
+    <ClCompile Include="ThreadParam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadParam.cpp">
+    <ClCompile Include="StdAfx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
