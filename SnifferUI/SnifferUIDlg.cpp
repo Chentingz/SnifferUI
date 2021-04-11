@@ -370,37 +370,6 @@ void CSnifferUIDlg::OnClickedStop()
 }
 
 /**
-*	@brief	判断过滤器输入是否在过滤器列表中
-*	@param	FilterList	过滤器输入
-*	@return	true 存在	false	不存在
-*/
-//bool isFilterListInFilterList(CString FilterList)
-//{
-//	// 建一个Filter类，将filterList其作为成员变量，isFilterListInFilterList（）作为其方法
-//	CList<CString, CString> filterList;
-//	filterList.AddTail("Ethernet");
-//	filterList.AddTail("IP");
-//	filterList.AddTail("ARP");
-//	filterList.AddTail("ICMP");
-//	filterList.AddTail("TCP");
-//	filterList.AddTail("UDP");
-//	filterList.AddTail("DNS");
-//	filterList.AddTail("DHCP");
-//	filterList.AddTail("HTTP");
-//
-//	POSITION pos = filterList.GetHeadPosition();
-//	for(int i = 0; i < filterList.GetCount(); ++i)
-//	{
-//		const CString &filter = filterList.GetNext(pos);
-//		if (FilterList == filter)
-//		{
-//			return true;
-//		}
-//	}
-//	return false;
-//}
-
-/**
 *	@brief	按下过滤按钮，根据过滤器输入的协议名过滤数据包
 *	@param	-
 *	@return -
@@ -418,20 +387,7 @@ void CSnifferUIDlg::OnClickedFilter()
 	m_editCtrlPacketBytes.SetWindowTextA("");
 
 	printListCtrlPacketList(m_pool, strFilter);
-
-	//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
-	//int pktTotalNum = m_pool.getSize();
-
 	updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
-	//double percentage;
-	//CString strPktDisplayNum;
-	//if (pktDisplayNum == 0 || pktTotalNum == 0)
-	//	percentage = 0.0;
-	//else
-	//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
-	//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
-	//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
-
 }
 
 /**
@@ -519,9 +475,6 @@ void CSnifferUIDlg::initialToolBar()
 		m_imageListMain.Add(&m_bitmapListMain[i], RGB(0, 0, 0));
 	}
 	m_toolBarMain.GetToolBarCtrl().SetImageList(&m_imageListMain);
-
-	//m_toolBarMain.GetToolBarCtrl().SetButtonSize(CSize(34, 34));
-	//m_toolBarMain.GetToolBarCtrl().SetBitmapSize(CSize(16, 16));
 
 	// 禁用主工具栏上的按钮 
 	//m_toolBarMain.GetToolBarCtrl().EnableButton(IDC_DROPDOWNBTN_DEVLIST, FALSE);
@@ -761,9 +714,6 @@ bool CSnifferUIDlg::createDirectory(const CString& dirPath)
 bool CSnifferUIDlg::clearDirectory(const CString& dirPath)
 {
 		CFileFind finder;
-		//TCHAR sTempFileFind[MAX_PATH] = { 0 };
-		//wsprintf(sTempFileFind, _T("%s\\*.pcap"), path);
-
 		CString path(dirPath);
 		path += _T("\\*.*");
 
@@ -2582,21 +2532,6 @@ LRESULT CSnifferUIDlg::OnPktCatchMessage(WPARAM wParam, LPARAM lParam)
 			printListCtrlPacketList(pkt);
 
 		// 修改状态栏 - 数据包总数、数据包显示个数
-		//int pktTotalNum = m_pool.getSize();
-		//CString strPktTotalNum;
-		//strPktTotalNum.Format("数据包：%d", pktTotalNum);
-
-		//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
-		//double percentage;
-		//CString strPktDisplayNum;
-		//if (pktDisplayNum == 0 || pktTotalNum == 0)
-		//	percentage = 0.0;
-		//else
-		//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
-		//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
-
-		//m_statusBar.SetPaneText(1, strPktTotalNum, true);
-		//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
 		updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 	}
 
@@ -2658,12 +2593,6 @@ BOOL CSnifferUIDlg::OnToolTipText(UINT, NMHDR * pNMHDR, LRESULT * pResult)
 
 	return TRUE;
 }
-
-
-//void CSnifferUIDlg::OnUpdateStatus(CCmdUI *pCmdUI)
-//{
-//	//pCmdUI->Enable();
-//}
 
 /**
 *	@brief	快捷键 - Ctrl + G - 获取数据包列表选中项焦点
