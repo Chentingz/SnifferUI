@@ -9,6 +9,8 @@
 #include "PacketCatcher.h"
 #include <vector>
 #include "ShortCutDialog.h"
+#define HAVE_REMOTE
+#include "pcap.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -589,7 +591,8 @@ void CSnifferUIDlg::initialComboBoxDevList()
 
 	pcap_if_t *dev = NULL; 
 	pcap_if_t *allDevs = NULL;
-	if (pcap_findalldevs(&allDevs, NULL) == -1)
+	char errbuf[PCAP_ERRBUF_SIZE + 1];
+	if (pcap_findalldevs(&allDevs, errbuf) == -1)
 	{
 		AfxMessageBox(_T("pcap_findalldevs´íÎó!"), MB_OK);
 		return;
@@ -599,6 +602,7 @@ void CSnifferUIDlg::initialComboBoxDevList()
 		if (dev->description != NULL)
 			m_comboBoxDevList.AddString(dev->description);		
 	}
+	pcap_freealldevs(allDevs);
 }
 
 /**
