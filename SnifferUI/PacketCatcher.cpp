@@ -1,11 +1,9 @@
 #include "stdafx.h"
-//#include "SnifferUI.h"
 #include "PacketCatcher.h"
 #include "Packet.h"
 #include "ThreadParam.h"
+#define HAVE_REMOTE
 #include "pcap.h"
-#include "remote-ext.h"
-//#include "resource.h"
 
 PacketCatcher::PacketCatcher()
 {
@@ -51,7 +49,8 @@ bool PacketCatcher::openAdapter(int selItemIndexOfDevList, const CTime &currentT
 
 	int count = 0, selDevIndex = selItemIndexOfDevList - 1;
 	pcap_if_t *dev, *allDevs;
-	if (pcap_findalldevs(&allDevs, NULL) == -1)
+	char errbuf[PCAP_ERRBUF_SIZE + 1];
+	if (pcap_findalldevs(&allDevs, errbuf) == -1)
 	{
 		AfxMessageBox(_T("pcap_findalldevs´íÎó!"), MB_OK);
 		return false;
