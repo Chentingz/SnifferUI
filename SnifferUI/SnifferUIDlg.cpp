@@ -545,7 +545,8 @@ void CSnifferUIDlg::initialComboBoxDevList()
 		if (dev->description != NULL)
 			m_comboBoxDevList.AddString(dev->description);		
 	}
-	pcap_freealldevs(allDevs);
+	m_catcher.setDevList(allDevs);
+	//pcap_freealldevs(allDevs);
 }
 
 /**

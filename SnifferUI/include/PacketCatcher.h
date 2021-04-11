@@ -20,6 +20,7 @@ private:
 	PacketPool		*m_pool;		// 数据包池的指针
 	pcap_dumper_t	*m_dumper;		// 转储文件描述符
 	CString         m_dev;			// 网卡/文件信息
+	pcap_if_t		*m_devlist;		// 网卡列表
 
 public:
 	PacketCatcher();
@@ -33,5 +34,6 @@ public:
 	void startCapture(int mode);
 	void stopCapture();
 	CString getDevName();
+	void setDevList(pcap_if_t* devlist);
 };
 

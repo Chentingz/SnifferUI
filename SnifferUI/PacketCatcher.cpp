@@ -10,6 +10,7 @@ PacketCatcher::PacketCatcher()
 	m_adhandle = NULL;
 	m_pool = NULL;
 	m_dumper = NULL;
+	m_devlist = NULL;
 }
 
 PacketCatcher::PacketCatcher(PacketPool * pool)
@@ -17,6 +18,7 @@ PacketCatcher::PacketCatcher(PacketPool * pool)
 	m_adhandle = NULL;
 	m_pool = pool;
 	m_dumper = NULL;
+	m_devlist = NULL;
 }
 
 
@@ -25,6 +27,12 @@ PacketCatcher::~PacketCatcher()
 	m_adhandle = NULL;
 	m_pool = NULL;
 	m_dumper = NULL;
+	if (m_devlist)
+	{
+		pcap_freealldevs(m_devlist); 
+		m_devlist = NULL;
+	}
+		
 }
 
 bool PacketCatcher::setPool(PacketPool *pool)
@@ -48,14 +56,16 @@ bool PacketCatcher::openAdapter(int selItemIndexOfDevList, const CTime &currentT
 		return false;
 
 	int count = 0, selDevIndex = selItemIndexOfDevList - 1;
-	pcap_if_t *dev, *allDevs;
-	char errbuf[PCAP_ERRBUF_SIZE + 1];
-	if (pcap_findalldevs(&allDevs, errbuf) == -1)
-	{
-		AfxMessageBox(_T("pcap_findalldevs´íÎó!"), MB_OK);
-		return false;
-	}
-	for (dev = allDevs; count < selDevIndex; dev = dev->next, ++count);
+	//pcap_if_t *dev, *allDevs;
+	//char errbuf[PCAP_ERRBUF_SIZE + 1];
+	//if (pcap_findalldevs(&allDevs, errbuf) == -1)
+	//{
+	//	AfxMessageBox(_T("pcap_findalldevs´íÎó!"), MB_OK);
+	//	return false;
+	//}
+	//for (dev = allDevs; count < selDevIndex; dev = dev->next, ++count);
+	pcap_if_t* dev;
+	for (dev = m_devlist; count < selDevIndex; dev = dev->next, ++count);
 	// Íø¿¨ÐÅÏ¢¿½±´
 	m_dev = dev->description + CString(" ( ") + dev->name + " )";
 
@@ -75,7 +85,7 @@ bool PacketCatcher::openAdapter(int selItemIndexOfDevList, const CTime &currentT
 	CString path = ".\\tmp\\" + file;
 	m_dumper = pcap_dump_open(m_adhandle, path);
 
-	pcap_freealldevs(allDevs);
+	//pcap_freealldevs(allDevs);
 	return true;
 }
 
@@ -143,6 +153,11 @@ void PacketCatcher::stopCapture()
 CString PacketCatcher::getDevName()
 {
 	return m_dev;
+}
+
+void PacketCatcher::setDevList(pcap_if_t *devlist)
+{
+	m_devlist = devlist;
 }
 
 
