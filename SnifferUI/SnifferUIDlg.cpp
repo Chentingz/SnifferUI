@@ -318,7 +318,7 @@ void CSnifferUIDlg::OnClickedStart()
 		m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"打开"
 		m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
 		m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_GRAYED);	// 禁用菜单项"另存为"
-		m_statusBar.SetPaneText(0, status, TRUE);				// 修改状态
+		
 		/* 清空控件显示内容 */
 		m_listCtrlPacketList.DeleteAllItems();
 		m_treeCtrlPacketDetails.DeleteAllItems();
@@ -326,7 +326,11 @@ void CSnifferUIDlg::OnClickedStart()
 
 		AfxGetMainWnd()->SetWindowText(status);
 
+		/* 清空内存中数据包池 */
 		m_pool.clear();
+
+		/* 更新状态栏 */
+		updateStatusBar(status, m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 
 		CString fileName = "SnifferUI_" + currentTime.Format("%Y%m%d%H%M%S") + ".pcap";
 		m_pktDumper.setPath(".\\tmp\\" + fileName);
@@ -346,7 +350,7 @@ void CSnifferUIDlg::OnClickedStart()
 */
 void CSnifferUIDlg::OnClickedStop() 
 {
-
+	CString status = "捕获结束：" + m_catcher.getDevName();
 	AfxGetMainWnd()->SetWindowText(m_pktDumper.getPath());	// 修改标题栏
 
 	m_comboBoxDevList.EnableWindow(TRUE);
@@ -358,7 +362,7 @@ void CSnifferUIDlg::OnClickedStop()
 	m_menu.EnableMenuItem(ID_MENU_FILE_OPEN, MF_ENABLED);	// 启用菜单项"打开"
 	m_menu.EnableMenuItem(ID_MENU_FILE_CLOSE, MF_GRAYED);	// 禁用菜单项"关闭"
 	m_menu.EnableMenuItem(ID_MENU_FILE_SAVEAS, MF_ENABLED);	// 启用菜单项"另存为"
-	m_statusBar.SetPaneText(0, "捕获结束", true);			// 修改状态
+	m_statusBar.SetPaneText(0, status, true);			// 修改状态
 
 	m_catcher.stopCapture();
 	m_pktCaptureFlag = false;
@@ -438,25 +442,11 @@ void CSnifferUIDlg::OnClickedFilter()
 void CSnifferUIDlg::OnClickedClear()
 {
 	m_comboBoxFilterList.SetCurSel(0);
-	if (m_listCtrlPacketList.GetItemCount() == 0)
-		return;
-
 	m_listCtrlPacketList.DeleteAllItems();
 	m_treeCtrlPacketDetails.DeleteAllItems();
 	m_editCtrlPacketBytes.SetWindowTextA("");
-	
-	printListCtrlPacketList(m_pool);
 
-	//int pktDisplayNum = m_listCtrlPacketList.GetItemCount();
-	//int pktTotalNum = m_pool.getSize();
-	//double percentage;
-	//CString strPktDisplayNum;
-	//if (pktDisplayNum == 0 || pktTotalNum == 0)
-	//	percentage = 0.0;
-	//else
-	//	percentage = ((double)pktDisplayNum / pktTotalNum) * 100;
-	//strPktDisplayNum.Format("已显示：%d（%.1f%%）", pktDisplayNum, percentage);
-	//m_statusBar.SetPaneText(2, strPktDisplayNum, true);
+	printListCtrlPacketList(m_pool);
 	updateStatusBar(CString(""), m_pool.getSize(), m_listCtrlPacketList.GetItemCount());
 }
 /*************************************************************
