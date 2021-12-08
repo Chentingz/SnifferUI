@@ -3,6 +3,11 @@
   <h1>SnifferUI</h1>
 </p>  
 
+![Release](https://img.shields.io/github/v/release/chentingz/snifferui)
+![Downloads](https://img.shields.io/github/downloads/chentingz/snifferui/total?color=brightgreen)
+![Stars](https://img.shields.io/github/stars/chentingz/snifferui?color=orange)
+![Forks](https://img.shields.io/github/forks/chentingz/snifferui?color=orange)
+
 这是一款基于MFC和WinPcap库开发的网络抓包和协议分析软件，你可以用它来采集本机网络流量并在线分析协议，或者读取pcap文件进行离线协议分析，快[下载](https://github.com/Chentingz/SnifferUI/releases/tag/v2.0)试试吧。
 
 开发环境：Win7 + Visual Studio 2015  
